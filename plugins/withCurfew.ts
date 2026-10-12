@@ -12,6 +12,7 @@ const REQUIRED_PERMISSIONS = [
   'android.permission.SYSTEM_ALERT_WINDOW',
   'android.permission.RECEIVE_BOOT_COMPLETED',
   'android.permission.FOREGROUND_SERVICE',
+  'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
   'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
 ];
 
@@ -70,6 +71,29 @@ export function modifyAndroidManifest(
             $: {
               'android:name': 'android.accessibilityservice',
               'android:resource': '@xml/accessibility_service_config',
+            },
+          },
+        ],
+      } as any);
+    }
+
+    const hasForegroundService = app.service.some(
+      (serviceNode: any) =>
+        serviceNode.$['android:name'] === '.CurfewForegroundService'
+    );
+    if (!hasForegroundService) {
+      app.service.push({
+        $: {
+          'android:name': '.CurfewForegroundService',
+          'android:enabled': 'true',
+          'android:exported': 'false',
+          'android:foregroundServiceType': 'specialUse',
+        },
+        property: [
+          {
+            $: {
+              'android:name': 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE',
+              'android:value': 'Maintain curfew keep-alive and background evaluation',
             },
           },
         ],

@@ -92,8 +92,12 @@ export default function App() {
           </View>
         </View>
 
-        {activeTab === 'schedule' && <ScheduleEditor />}
-        {activeTab === 'apps' && <AppSelectionList />}
+        {activeTab === 'schedule' && (
+          <ScheduleEditor isCurfewActive={isCurfewRunning} />
+        )}
+        {activeTab === 'apps' && (
+          <AppSelectionList isCurfewActive={isCurfewRunning} />
+        )}
         {activeTab === 'setup' && <OnboardingWizard />}
       </View>
     </SafeAreaView>

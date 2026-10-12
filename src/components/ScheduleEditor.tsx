@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,8 @@ import {
 import { theme } from '../theme';
 import { useCurfewSchedule } from '../hooks/useCurfewSchedule';
 import { formatTime, isOvernightWindow } from '../services/schedule';
+import { HardLockoutBanner } from './HardLockoutBanner';
+import { canModifySettings } from '../services/hardLockout';
 
 const DAYS = [
   { id: 1, label: 'Mon' },
@@ -24,15 +26,32 @@ interface TimeAdjusterProps {
   label: string;
   hour: number;
   minute: number;
+  disabled?: boolean;
   onAdjust: (newHour: number, newMinute: number) => void;
+  onAttemptDisabled?: () => void;
 }
 
-function TimeAdjuster({ label, hour, minute, onAdjust }: TimeAdjusterProps) {
+function TimeAdjuster({
+  label,
+  hour,
+  minute,
+  disabled = false,
+  onAdjust,
+  onAttemptDisabled,
+}: TimeAdjusterProps) {
   const adjustHour = (delta: number) => {
+    if (disabled) {
+      onAttemptDisabled?.();
+      return;
+    }
     onAdjust((hour + delta + 24) % 24, minute);
   };
 
   const adjustMinute = (delta: number) => {
+    if (disabled) {
+      onAttemptDisabled?.();
+      return;
+    }
     onAdjust(hour, (minute + delta + 60) % 60);
   };
 
@@ -44,17 +63,33 @@ function TimeAdjuster({ label, hour, minute, onAdjust }: TimeAdjusterProps) {
           <Text style={styles.timeValue}>{formatTime(hour, minute)}</Text>
         </View>
         <View style={styles.stepperRow}>
-          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustHour(-1)}>
-            <Text style={styles.stepperText}>-1h</Text>
+          <TouchableOpacity
+            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
+            onPress={() => adjustHour(-1)}
+            activeOpacity={disabled ? 1 : 0.7}
+          >
+            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>-1h</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustHour(1)}>
-            <Text style={styles.stepperText}>+1h</Text>
+          <TouchableOpacity
+            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
+            onPress={() => adjustHour(1)}
+            activeOpacity={disabled ? 1 : 0.7}
+          >
+            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>+1h</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustMinute(-15)}>
-            <Text style={styles.stepperText}>-15m</Text>
+          <TouchableOpacity
+            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
+            onPress={() => adjustMinute(-15)}
+            activeOpacity={disabled ? 1 : 0.7}
+          >
+            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>-15m</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustMinute(15)}>
-            <Text style={styles.stepperText}>+15m</Text>
+          <TouchableOpacity
+            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
+            onPress={() => adjustMinute(15)}
+            activeOpacity={disabled ? 1 : 0.7}
+          >
+            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>+15m</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -62,10 +97,14 @@ function TimeAdjuster({ label, hour, minute, onAdjust }: TimeAdjusterProps) {
   );
 }
 
-export function ScheduleEditor() {
+interface ScheduleEditorProps {
+  isCurfewActive?: boolean;
+}
+
+export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorProps = {}) {
   const {
     schedule,
-    isActive,
+    isActive: engineIsActive,
     transition,
     toggleDay,
     toggleEnabled,
@@ -73,12 +112,28 @@ export function ScheduleEditor() {
     setEndTime,
   } = useCurfewSchedule();
 
+  const isActive = propIsActive !== undefined ? propIsActive : engineIsActive;
+  const isLocked = !canModifySettings(isActive);
+  const [lockoutAttempted, setLockoutAttempted] = useState(false);
+
+  const handleAttemptChange = () => {
+    setLockoutAttempted(true);
+  };
+
   const isOvernight = isOvernightWindow(schedule);
   const hoursRemaining = Math.floor(transition.minutesRemaining / 60);
   const minsRemaining = transition.minutesRemaining % 60;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Hard Lockout Banner when active or attempted */}
+      {(isLocked || lockoutAttempted) && (
+        <HardLockoutBanner
+          isAttempt={lockoutAttempted}
+          message="Curfew is in progress. Schedule modifications are locked until the active Curfew Window ends."
+        />
+      )}
+
       {/* Status Banner */}
       <View style={styles.statusBanner}>
         <View style={styles.bannerHeader}>
@@ -102,16 +157,36 @@ export function ScheduleEditor() {
           <View>
             <Text style={styles.cardTitle}>Enforce Schedule</Text>
             <Text style={styles.cardSubtitle}>
-              Automatically restrict target apps during curfew
+              {isLocked
+                ? 'Modifications locked during active Curfew Window'
+                : 'Automatically restrict target apps during curfew'}
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.togglePill, schedule.enabled ? styles.togglePillActive : styles.togglePillInactive]}
-            onPress={toggleEnabled}
-            activeOpacity={0.8}
+            style={[
+              styles.togglePill,
+              schedule.enabled ? styles.togglePillActive : styles.togglePillInactive,
+              isLocked && styles.togglePillDisabled,
+            ]}
+            onPress={() => {
+              if (isLocked) {
+                handleAttemptChange();
+                return;
+              }
+              toggleEnabled();
+            }}
+            activeOpacity={isLocked ? 1 : 0.8}
           >
-            <View style={[styles.toggleDot, schedule.enabled ? styles.dotActive : styles.dotInactive]} />
-            <Text style={styles.toggleText}>{schedule.enabled ? 'Enabled' : 'Disabled'}</Text>
+            <View
+              style={[
+                styles.toggleDot,
+                schedule.enabled ? styles.dotActive : styles.dotInactive,
+                isLocked && styles.toggleDotLocked,
+              ]}
+            />
+            <Text style={[styles.toggleText, isLocked && styles.toggleTextLocked]}>
+              {schedule.enabled ? 'Enabled' : 'Disabled'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -124,7 +199,9 @@ export function ScheduleEditor() {
           label="Curfew Window starts"
           hour={schedule.startHour}
           minute={schedule.startMinute}
+          disabled={isLocked}
           onAdjust={setStartTime}
+          onAttemptDisabled={handleAttemptChange}
         />
 
         <View style={styles.divider} />
@@ -133,7 +210,9 @@ export function ScheduleEditor() {
           label="Curfew Window ends"
           hour={schedule.endHour}
           minute={schedule.endMinute}
+          disabled={isLocked}
           onAdjust={setEndTime}
+          onAttemptDisabled={handleAttemptChange}
         />
 
         {isOvernight ? (
@@ -148,7 +227,9 @@ export function ScheduleEditor() {
 
       <View style={styles.card}>
         <Text style={styles.cardSubtitle}>
-          Curfew applies on selected days:
+          {isLocked
+            ? 'Days cannot be toggled while Curfew is in progress:'
+            : 'Curfew applies on selected days:'}
         </Text>
         <View style={styles.daysRow}>
           {DAYS.map((day) => {
@@ -156,11 +237,27 @@ export function ScheduleEditor() {
             return (
               <TouchableOpacity
                 key={day.id}
-                style={[styles.dayPill, isDayActive ? styles.dayPillActive : styles.dayPillInactive]}
-                onPress={() => toggleDay(day.id)}
-                activeOpacity={0.7}
+                style={[
+                  styles.dayPill,
+                  isDayActive ? styles.dayPillActive : styles.dayPillInactive,
+                  isLocked && styles.dayPillDisabled,
+                ]}
+                onPress={() => {
+                  if (isLocked) {
+                    handleAttemptChange();
+                    return;
+                  }
+                  toggleDay(day.id);
+                }}
+                activeOpacity={isLocked ? 1 : 0.7}
               >
-                <Text style={[styles.dayLabel, isDayActive ? styles.dayLabelActive : styles.dayLabelInactive]}>
+                <Text
+                  style={[
+                    styles.dayLabel,
+                    isDayActive ? styles.dayLabelActive : styles.dayLabelInactive,
+                    isLocked && styles.dayLabelDisabled,
+                  ]}
+                >
                   {day.label}
                 </Text>
               </TouchableOpacity>
@@ -344,5 +441,29 @@ const styles = StyleSheet.create({
   },
   dayLabelInactive: {
     color: theme.colors.mute,
+  },
+  stepperButtonDisabled: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderColor: theme.colors.hairline,
+    opacity: 0.5,
+  },
+  stepperTextDisabled: {
+    color: theme.colors.ash,
+  },
+  togglePillDisabled: {
+    opacity: 0.6,
+    borderColor: theme.colors.hairline,
+  },
+  toggleDotLocked: {
+    backgroundColor: theme.colors.ash,
+  },
+  toggleTextLocked: {
+    color: theme.colors.mute,
+  },
+  dayPillDisabled: {
+    opacity: 0.5,
+  },
+  dayLabelDisabled: {
+    color: theme.colors.ash,
   },
 });

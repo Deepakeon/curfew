@@ -50,6 +50,11 @@ class CurfewAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
         Log.i(TAG, "CurfewAccessibilityService connected")
+        try {
+            CurfewForegroundService.start(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start Curfew Foreground Keep-Alive on service connect", e)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

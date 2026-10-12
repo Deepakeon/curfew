@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,8 +12,19 @@ import {
 import { theme } from '../theme';
 import { useTargetApps } from '../hooks/useTargetApps';
 import { InstalledApp } from '../services/targetApps';
+import { HardLockoutBanner } from './HardLockoutBanner';
+import { canModifySettings } from '../services/hardLockout';
+import { useCurfewSchedule } from '../hooks/useCurfewSchedule';
 
-export function AppSelectionList() {
+interface AppSelectionListProps {
+  isCurfewActive?: boolean;
+}
+
+export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionListProps = {}) {
+  const { isActive: scheduleIsActive } = useCurfewSchedule();
+  const isCurfewActive = propIsActive !== undefined ? propIsActive : scheduleIsActive;
+  const isLocked = !canModifySettings(isCurfewActive);
+  const [lockoutAttempted, setLockoutAttempted] = useState(false);
   const {
     apps,
     allAppsCount,
@@ -30,9 +41,19 @@ export function AppSelectionList() {
 
     return (
       <TouchableOpacity
-        style={[styles.appItem, isTarget && styles.appItemTarget]}
-        onPress={() => toggleApp(item.packageName)}
-        activeOpacity={0.7}
+        style={[
+          styles.appItem,
+          isTarget && styles.appItemTarget,
+          isLocked && styles.appItemLocked,
+        ]}
+        onPress={() => {
+          if (isLocked) {
+            setLockoutAttempted(true);
+            return;
+          }
+          toggleApp(item.packageName);
+        }}
+        activeOpacity={isLocked ? 1 : 0.7}
       >
         <View style={styles.appLeading}>
           {hasIcon ? (
@@ -58,10 +79,22 @@ export function AppSelectionList() {
           </View>
         </View>
 
-        <View style={[styles.toggleBadge, isTarget ? styles.badgeRestricted : styles.badgeAllowed]}>
-          <View style={[styles.toggleDot, isTarget ? styles.dotRestricted : styles.dotAllowed]} />
-          <Text style={styles.toggleText}>
-            {isTarget ? 'Restricted' : 'Allowed'}
+        <View
+          style={[
+            styles.toggleBadge,
+            isTarget ? styles.badgeRestricted : styles.badgeAllowed,
+            isLocked && styles.badgeLocked,
+          ]}
+        >
+          <View
+            style={[
+              styles.toggleDot,
+              isTarget ? styles.dotRestricted : styles.dotAllowed,
+              isLocked && styles.dotLocked,
+            ]}
+          />
+          <Text style={[styles.toggleText, isLocked && styles.toggleTextLocked]}>
+            {isTarget ? (isLocked ? 'Restricted (Locked)' : 'Restricted') : (isLocked ? 'Allowed (Locked)' : 'Allowed')}
           </Text>
         </View>
       </TouchableOpacity>
@@ -70,11 +103,20 @@ export function AppSelectionList() {
 
   return (
     <View style={styles.container}>
+      {(isLocked || lockoutAttempted) && (
+        <HardLockoutBanner
+          isAttempt={lockoutAttempted}
+          message="Curfew is in progress. Target App selection is locked until the active Curfew Window ends."
+        />
+      )}
+
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Target Apps</Text>
           <Text style={styles.subtitle}>
-            Select installed applications to restrict during Curfew Windows.
+            {isLocked
+              ? 'Target App selection is locked during active Curfew.'
+              : 'Select installed applications to restrict during Curfew Windows.'}
           </Text>
         </View>
         <View style={styles.counterBadge}>
@@ -300,6 +342,18 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...theme.typography.bodySm,
+    color: theme.colors.mute,
+  },
+  appItemLocked: {
+    opacity: 0.75,
+  },
+  badgeLocked: {
+    borderColor: theme.colors.hairline,
+  },
+  dotLocked: {
+    backgroundColor: theme.colors.ash,
+  },
+  toggleTextLocked: {
     color: theme.colors.mute,
   },
 });

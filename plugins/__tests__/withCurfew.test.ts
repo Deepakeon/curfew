@@ -24,10 +24,11 @@ describe('withCurfew Expo Config Plugin', () => {
     expect(permissions).toContain('android.permission.SYSTEM_ALERT_WINDOW');
     expect(permissions).toContain('android.permission.RECEIVE_BOOT_COMPLETED');
     expect(permissions).toContain('android.permission.FOREGROUND_SERVICE');
+    expect(permissions).toContain('android.permission.FOREGROUND_SERVICE_SPECIAL_USE');
     expect(permissions).toContain('android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS');
   });
 
-  it('declares CurfewAccessibilityService and BootReceiver in application', () => {
+  it('declares CurfewAccessibilityService, CurfewForegroundService, and BootReceiver in application', () => {
     const mockManifest = createMockManifest();
     const updated = modifyAndroidManifest(mockManifest);
     const app = updated.manifest.application![0];
@@ -36,11 +37,25 @@ describe('withCurfew Expo Config Plugin', () => {
       (serviceNode: any) => serviceNode.$['android:name']
     );
     expect(serviceNames).toContain('.CurfewAccessibilityService');
+    expect(serviceNames).toContain('.CurfewForegroundService');
+
+    const foregroundService = (app.service || []).find(
+      (s: any) => s.$['android:name'] === '.CurfewForegroundService'
+    );
+    expect(foregroundService?.$['android:foregroundServiceType']).toBe('specialUse');
 
     const receiverNames = (app.receiver || []).map(
       (receiverNode: any) => receiverNode.$['android:name']
     );
     expect(receiverNames).toContain('.BootReceiver');
+
+    const bootReceiver = (app.receiver || []).find(
+      (r: any) => r.$['android:name'] === '.BootReceiver'
+    );
+    const bootActions = bootReceiver?.['intent-filter']?.[0]?.action?.map(
+      (a: any) => a.$['android:name']
+    );
+    expect(bootActions).toContain('android.intent.action.BOOT_COMPLETED');
   });
 
   it('syncNativeFiles copies XML and Kotlin native files to dynamic package directory', () => {
@@ -62,11 +77,19 @@ describe('withCurfew Expo Config Plugin', () => {
     const packageExists = fs.existsSync(
       path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewPackage.kt')
     );
+    const foregroundExists = fs.existsSync(
+      path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewForegroundService.kt')
+    );
+    const bootReceiverExists = fs.existsSync(
+      path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/BootReceiver.kt')
+    );
 
     expect(xmlExists).toBe(true);
     expect(kotlinExists).toBe(true);
     expect(overlayExists).toBe(true);
     expect(packageExists).toBe(true);
+    expect(foregroundExists).toBe(true);
+    expect(bootReceiverExists).toBe(true);
 
     const xmlContent = fs.readFileSync(
       path.join(tempPlatform, 'app/src/main/res/xml/accessibility_service_config.xml'),
