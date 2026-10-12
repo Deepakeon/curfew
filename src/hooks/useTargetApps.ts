@@ -4,8 +4,11 @@ import {
   TargetAppsDriver,
   defaultTargetAppsDriver,
   filterApps,
+  excludeProtectedPackages,
   toggleTargetPackage,
 } from '../services/targetApps';
+
+const PROTECTED_PACKAGES = ['com.curfew'];
 
 export function useTargetApps(driver: TargetAppsDriver = defaultTargetAppsDriver) {
   const [apps, setApps] = useState<InstalledApp[]>([]);
@@ -20,7 +23,8 @@ export function useTargetApps(driver: TargetAppsDriver = defaultTargetAppsDriver
         driver.getInstalledApps(),
         driver.getTargetApps(),
       ]);
-      setApps(installed);
+      const sanitized = excludeProtectedPackages(installed, PROTECTED_PACKAGES);
+      setApps(sanitized);
       setTargetPackages(selected);
     } catch {
       // Keep empty defaults
@@ -35,15 +39,23 @@ export function useTargetApps(driver: TargetAppsDriver = defaultTargetAppsDriver
 
   const toggleApp = useCallback(
     async (packageName: string) => {
-      const nextTargets = toggleTargetPackage(targetPackages, packageName);
-      setTargetPackages(nextTargets);
+      let previousTargets: string[] = [];
+      let updatedTargets: string[] = [];
+
+      setTargetPackages((prev) => {
+        previousTargets = prev;
+        updatedTargets = toggleTargetPackage(prev, packageName);
+        return updatedTargets;
+      });
+
       try {
-        await driver.setTargetApps(nextTargets);
+        await driver.setTargetApps(updatedTargets);
       } catch {
-        // Rollback on failure if needed
+        // Rollback state on persistence failure
+        setTargetPackages(previousTargets);
       }
     },
-    [targetPackages, driver]
+    [driver]
   );
 
   const filteredApps = useMemo(() => {

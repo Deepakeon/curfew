@@ -22,6 +22,9 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
     companion object {
         const val PREFS_NAME = "curfew_prefs"
         const val KEY_TARGET_PACKAGES = "target_packages"
+        const val HARDCODED_CURFEW_PACKAGE = "com.curfew"
+        const val ICON_SIZE_PX = 64
+        const val COMPRESS_QUALITY = 85
     }
 
     override fun getName(): String = "CurfewApps"
@@ -33,12 +36,16 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
                 val pm = reactContext.packageManager
                 val curfewPackage = reactContext.packageName
 
-                // Identify default system launcher to protect it from selection
+                // Identify all device launcher packages to protect them from selection
                 val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                val defaultLauncherPackage = pm.resolveActivity(
-                    homeIntent,
-                    PackageManager.MATCH_DEFAULT_ONLY
-                )?.activityInfo?.packageName
+                val launcherActivities = pm.queryIntentActivities(homeIntent, 0)
+                val protectedLauncherPackages = launcherActivities.map {
+                    it.activityInfo.packageName
+                }.toMutableSet()
+
+                pm.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName?.let {
+                    protectedLauncherPackages.add(it)
+                }
 
                 // Query all launcher apps
                 val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -54,8 +61,8 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
                 for (info in sortedList) {
                     val pkg = info.activityInfo.packageName
                     if (seenPackages.contains(pkg)) continue
-                    if (pkg == curfewPackage) continue
-                    if (pkg == defaultLauncherPackage) continue
+                    if (pkg == curfewPackage || pkg == HARDCODED_CURFEW_PACKAGE) continue
+                    if (protectedLauncherPackages.contains(pkg)) continue
 
                     seenPackages.add(pkg)
                     val label = info.loadLabel(pm).toString()
@@ -116,8 +123,8 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
         val bitmap = when (drawable) {
             is BitmapDrawable -> drawable.bitmap
             else -> {
-                val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth.coerceAtMost(96) else 64
-                val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight.coerceAtMost(96) else 64
+                val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth.coerceAtMost(ICON_SIZE_PX * 2) else ICON_SIZE_PX
+                val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight.coerceAtMost(ICON_SIZE_PX * 2) else ICON_SIZE_PX
                 val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bmp)
                 drawable.setBounds(0, 0, canvas.width, canvas.height)
@@ -125,9 +132,9 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
                 bmp
             }
         }
-        val scaled = Bitmap.createScaledBitmap(bitmap, 64, 64, true)
+        val scaled = Bitmap.createScaledBitmap(bitmap, ICON_SIZE_PX, ICON_SIZE_PX, true)
         val stream = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.PNG, 85, stream)
+        scaled.compress(Bitmap.CompressFormat.PNG, COMPRESS_QUALITY, stream)
         return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
     }
 }

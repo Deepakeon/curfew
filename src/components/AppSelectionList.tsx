@@ -26,7 +26,7 @@ export function AppSelectionList() {
 
   const renderAppItem = ({ item }: { item: InstalledApp }) => {
     const isTarget = targetSet.has(item.packageName);
-    const hasIcon = item.icon && item.icon.length > 0;
+    const hasIcon = Boolean(item.icon && item.icon.length > 0);
 
     return (
       <TouchableOpacity
@@ -74,7 +74,7 @@ export function AppSelectionList() {
         <View>
           <Text style={styles.title}>Target Apps</Text>
           <Text style={styles.subtitle}>
-            Select installed apps to lock during Curfew Windows.
+            Select installed applications to restrict during Curfew Windows.
           </Text>
         </View>
         <View style={styles.counterBadge}>
@@ -123,7 +123,9 @@ export function AppSelectionList() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                {searchQuery.length > 0 ? 'No matching apps found.' : 'No installed launcher apps detected.'}
+                {searchQuery.length > 0
+                  ? 'No matching apps found.'
+                  : 'No installed launcher apps detected.'}
               </Text>
             </View>
           }
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...theme.typography.captionMd,
     color: theme.colors.mute,
-    marginTop: 2,
+    marginTop: theme.spacing.xxs,
   },
   counterBadge: {
     backgroundColor: theme.colors.surfaceElevated,
@@ -180,7 +182,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...theme.typography.bodyMd,
     color: theme.colors.ink,
-    paddingVertical: theme.spacing.sm + 2,
+    paddingVertical: theme.spacing.sm,
   },
   clearButton: {
     paddingVertical: theme.spacing.xs,
@@ -214,15 +216,15 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
   },
   appIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.rounded.sm,
+    width: 48,
+    height: 48,
+    borderRadius: theme.rounded.md,
     backgroundColor: theme.colors.surfaceElevated,
   },
   appIconFallback: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.rounded.sm,
+    width: 48,
+    height: 48,
+    borderRadius: theme.rounded.md,
     backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
   appPackage: {
     ...theme.typography.captionSm,
     color: theme.colors.mute,
-    marginTop: 1,
+    marginTop: theme.spacing.xxs,
   },
   toggleBadge: {
     flexDirection: 'row',
@@ -260,6 +262,7 @@ const styles = StyleSheet.create({
   },
   badgeRestricted: {
     borderColor: theme.colors.hairlineStrong,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   badgeAllowed: {
     borderColor: theme.colors.hairline,
@@ -268,10 +271,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 6,
+    marginRight: theme.spacing.xs,
   },
   dotRestricted: {
-    backgroundColor: theme.colors.accentRed,
+    backgroundColor: theme.colors.ink,
   },
   dotAllowed: {
     backgroundColor: theme.colors.ash,
