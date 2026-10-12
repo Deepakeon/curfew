@@ -134,11 +134,6 @@ class CurfewScheduleModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun setSchedule(schedule: ReadableMap, promise: Promise) {
         try {
-            if (checkCurfewActiveNow(reactContext)) {
-                promise.reject("HARD_LOCKOUT", "Curfew is in progress. Schedule modifications are locked.")
-                return
-            }
-
             val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val editor = prefs.edit()
 

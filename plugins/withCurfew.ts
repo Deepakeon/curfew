@@ -305,19 +305,22 @@ gradle.taskGraph.whenReady { taskGraph ->
   }
 
   // Update buildTypes.release signingConfig
-  const releaseBlockIdx = result.indexOf('release {');
-  if (releaseBlockIdx !== -1) {
-    const nextSigningDebug = result.indexOf(
-      'signingConfig signingConfigs.debug',
-      releaseBlockIdx
-    );
-    if (nextSigningDebug !== -1) {
-      result =
-        result.slice(0, nextSigningDebug) +
-        'signingConfig signingConfigs.release' +
-        result.slice(
-          nextSigningDebug + 'signingConfig signingConfigs.debug'.length
-        );
+  const buildTypesIdx = result.indexOf('buildTypes {');
+  if (buildTypesIdx !== -1) {
+    const releaseBlockIdx = result.indexOf('release {', buildTypesIdx);
+    if (releaseBlockIdx !== -1) {
+      const nextSigningDebug = result.indexOf(
+        'signingConfig signingConfigs.debug',
+        releaseBlockIdx
+      );
+      if (nextSigningDebug !== -1) {
+        result =
+          result.slice(0, nextSigningDebug) +
+          'signingConfig signingConfigs.release' +
+          result.slice(
+            nextSigningDebug + 'signingConfig signingConfigs.debug'.length
+          );
+      }
     }
   }
 
