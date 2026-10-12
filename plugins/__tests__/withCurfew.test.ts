@@ -1,4 +1,4 @@
-import { modifyAndroidManifest, syncNativeFiles } from '../withCurfew';
+import { modifyAndroidManifest, syncNativeFiles, modifyMainApplication } from '../withCurfew';
 import { AndroidConfig } from '@expo/config-plugins';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -56,11 +56,26 @@ describe('withCurfew Expo Config Plugin', () => {
     const kotlinExists = fs.existsSync(
       path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewAccessibilityService.kt')
     );
+    const packageExists = fs.existsSync(
+      path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewPackage.kt')
+    );
 
     expect(xmlExists).toBe(true);
     expect(kotlinExists).toBe(true);
+    expect(packageExists).toBe(true);
 
     // Clean up
     fs.rmSync(tempPlatform, { recursive: true, force: true });
+  });
+
+  it('modifies MainApplication to register CurfewPackage', () => {
+    const mockContent = `
+      PackageList(this).packages.apply {
+        // Packages that cannot be autolinked yet can be added manually here, for example:
+        // add(MyReactNativePackage())
+      }
+    `;
+    const updated = modifyMainApplication(mockContent);
+    expect(updated).toContain('add(CurfewPackage())');
   });
 });

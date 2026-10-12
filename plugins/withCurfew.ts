@@ -108,6 +108,31 @@ export function modifyAndroidManifest(
   return androidManifest;
 }
 
+export function modifyMainApplication(content: string): string {
+  if (content.includes('CurfewPackage()')) {
+    return content;
+  }
+
+  const placeholder = '// add(MyReactNativePackage())';
+  if (content.includes(placeholder)) {
+    return content.replace(
+      placeholder,
+      `${placeholder}\n          add(CurfewPackage())`
+    );
+  }
+
+  // Fallback: search for packageList block
+  const packageListApply = 'PackageList(this).packages.apply {';
+  if (content.includes(packageListApply)) {
+    return content.replace(
+      packageListApply,
+      `${packageListApply}\n          add(CurfewPackage())`
+    );
+  }
+
+  return content;
+}
+
 export function syncNativeFiles(
   platformRoot: string,
   projectRoot: string,
@@ -147,6 +172,16 @@ export function syncNativeFiles(
         path.join(kotlinSourceDir, file),
         path.join(javaTarget, file)
       );
+    }
+  }
+
+  // Wire CurfewPackage into MainApplication.kt
+  const mainAppPath = path.join(javaTarget, 'MainApplication.kt');
+  if (fs.existsSync(mainAppPath)) {
+    const mainAppContent = fs.readFileSync(mainAppPath, 'utf8');
+    const updatedContent = modifyMainApplication(mainAppContent);
+    if (updatedContent !== mainAppContent) {
+      fs.writeFileSync(mainAppPath, updatedContent, 'utf8');
     }
   }
 }
