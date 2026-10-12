@@ -8,6 +8,8 @@ import { ScheduleEditor } from './src/components/ScheduleEditor';
 import { usePermissions } from './src/hooks/usePermissions';
 import { useCurfewSchedule } from './src/hooks/useCurfewSchedule';
 
+import { getAndroidStatusBarHeight } from './src/utils/layout';
+
 type ActiveTab = 'schedule' | 'apps' | 'setup';
 
 export default function App() {
@@ -108,6 +110,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.canvas,
+    paddingTop: getAndroidStatusBarHeight(),
   },
   container: {
     flex: 1,
