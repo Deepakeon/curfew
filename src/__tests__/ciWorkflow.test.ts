@@ -12,12 +12,10 @@ describe('CI/CD Release Workflow Configuration', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const content = fs.readFileSync(workflowPath, 'utf8');
 
-    // Workflow name and triggers
+    // Workflow name and manual trigger
     expect(content).toContain('name:');
     expect(content).toContain('workflow_dispatch:');
-    expect(content).toContain('push:');
-    expect(content).toContain('main');
-    expect(content).toContain("'v*.*.*'");
+    expect(content).not.toContain('push:');
 
     // Essential toolchain setup
     expect(content).toContain('actions/checkout@v4');

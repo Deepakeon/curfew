@@ -8,11 +8,6 @@ on:
         required: false
         default: ''
         type: string
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*.*.*'
 
 jobs:
   build:

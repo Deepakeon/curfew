@@ -43,11 +43,9 @@ base64 -i ~/.android/keys/curfew-release.jks
 
 ### GitHub Actions Workflow
 
-The release workflow is defined in [`.github/workflows/build-release-apk.yml`](.github/workflows/build-release-apk.yml) and runs on:
+The release workflow is defined in [`.github/workflows/build-release-apk.yml`](.github/workflows/build-release-apk.yml) and is triggered manually:
 
-- **Version tag push**: `v*.*.*` (e.g. `v1.0.0`)
-- **Pushes to `main`**
-- **Manual dispatch (`workflow_dispatch`)**: Can be triggered manually from the Actions tab with an optional target branch or tag input.
+- **Manual dispatch (`workflow_dispatch`)**: Trigger from the GitHub Actions tab with an optional target branch, tag, or SHA. Push triggers are omitted to prevent unintended automated release builds.
 
 ### Artifacts
 
