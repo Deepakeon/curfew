@@ -4,14 +4,15 @@ import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity } from 'react-na
 import { theme } from './src/theme';
 import { OnboardingWizard } from './src/components/OnboardingWizard';
 import { AppSelectionList } from './src/components/AppSelectionList';
+import { ScheduleEditor } from './src/components/ScheduleEditor';
 import { usePermissions } from './src/hooks/usePermissions';
 
-type ActiveTab = 'apps' | 'permissions';
+type ActiveTab = 'schedule' | 'apps' | 'setup';
 
 export default function App() {
   const { permissions } = usePermissions();
   const [activeTab, setActiveTab] = useState<ActiveTab>(
-    permissions.allGranted ? 'apps' : 'permissions'
+    permissions.allGranted ? 'schedule' : 'setup'
   );
 
   return (
@@ -21,6 +22,21 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.title}>Curfew</Text>
           <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tabPill, activeTab === 'schedule' && styles.tabPillActive]}
+              onPress={() => setActiveTab('schedule')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'schedule' && styles.tabTextActive,
+                ]}
+              >
+                Schedule
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.tabPill, activeTab === 'apps' && styles.tabPillActive]}
               onPress={() => setActiveTab('apps')}
@@ -32,16 +48,13 @@ export default function App() {
                   activeTab === 'apps' && styles.tabTextActive,
                 ]}
               >
-                Target Apps
+                Apps
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.tabPill,
-                activeTab === 'permissions' && styles.tabPillActive,
-              ]}
-              onPress={() => setActiveTab('permissions')}
+              style={[styles.tabPill, activeTab === 'setup' && styles.tabPillActive]}
+              onPress={() => setActiveTab('setup')}
               activeOpacity={0.7}
             >
               <View
@@ -53,7 +66,7 @@ export default function App() {
               <Text
                 style={[
                   styles.tabText,
-                  activeTab === 'permissions' && styles.tabTextActive,
+                  activeTab === 'setup' && styles.tabTextActive,
                 ]}
               >
                 Setup
@@ -62,7 +75,9 @@ export default function App() {
           </View>
         </View>
 
-        {activeTab === 'apps' ? <AppSelectionList /> : <OnboardingWizard />}
+        {activeTab === 'schedule' && <ScheduleEditor />}
+        {activeTab === 'apps' && <AppSelectionList />}
+        {activeTab === 'setup' && <OnboardingWizard />}
       </View>
     </SafeAreaView>
   );

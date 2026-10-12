@@ -9,7 +9,8 @@ class CurfewPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
         return listOf(
             CurfewPermissionsModule(reactContext),
-            CurfewAppsModule(reactContext)
+            CurfewAppsModule(reactContext),
+            CurfewScheduleModule(reactContext)
         )
     }
 
