@@ -12,6 +12,7 @@ import {
   isCurfewActive,
   isOvernightWindow,
   formatTime,
+  generate15MinuteIntervals,
   getNextTransition,
   CurfewSchedule,
   defaultScheduleDriver,
@@ -44,6 +45,37 @@ describe('Curfew Schedule Domain Logic', () => {
         endHour: 17,
       })
     ).toBe(false);
+  });
+
+  describe('15-Minute Interval Generation', () => {
+    it('generates exactly 96 intervals covering 24 hours', () => {
+      const intervals = generate15MinuteIntervals();
+      expect(intervals).toHaveLength(96);
+      expect(intervals[0]).toEqual({
+        hour: 0,
+        minute: 0,
+        formatted: '12:00 AM',
+      });
+      expect(intervals[95]).toEqual({
+        hour: 23,
+        minute: 45,
+        formatted: '11:45 PM',
+      });
+    });
+
+    it('generates valid 15-minute steps', () => {
+      const intervals = generate15MinuteIntervals();
+      expect(intervals[1]).toEqual({
+        hour: 0,
+        minute: 15,
+        formatted: '12:15 AM',
+      });
+      expect(intervals[48]).toEqual({
+        hour: 12,
+        minute: 0,
+        formatted: '12:00 PM',
+      });
+    });
   });
 
   describe('Overnight Curfew (22:00 to 10:00)', () => {

@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { useCurfewSchedule } from '../hooks/useCurfewSchedule';
 import { formatTime, isOvernightWindow } from '../services/schedule';
 import { HardLockoutBanner } from './HardLockoutBanner';
 import { canModifySettings } from '../services/hardLockout';
+import { TimePickerModal } from './TimePickerModal';
 
 const DAYS = [
   { id: 1, label: 'Mon' },
@@ -22,77 +24,52 @@ const DAYS = [
   { id: 7, label: 'Sun' },
 ];
 
-interface TimeAdjusterProps {
+interface TimeDropdownSelectProps {
   label: string;
   hour: number;
   minute: number;
   disabled?: boolean;
-  onAdjust: (newHour: number, newMinute: number) => void;
-  onAttemptDisabled?: () => void;
+  onPress: () => void;
 }
 
-function TimeAdjuster({
+function TimeDropdownSelect({
   label,
   hour,
   minute,
   disabled = false,
-  onAdjust,
-  onAttemptDisabled,
-}: TimeAdjusterProps) {
-  const adjustHour = (delta: number) => {
-    if (disabled) {
-      onAttemptDisabled?.();
-      return;
-    }
-    onAdjust((hour + delta + 24) % 24, minute);
-  };
-
-  const adjustMinute = (delta: number) => {
-    if (disabled) {
-      onAttemptDisabled?.();
-      return;
-    }
-    onAdjust(hour, (minute + delta + 60) % 60);
-  };
+  onPress,
+}: TimeDropdownSelectProps) {
+  const formattedTime = formatTime(hour, minute);
 
   return (
-    <View style={styles.timeSection}>
-      <View style={styles.rowBetween}>
-        <View>
-          <Text style={styles.timeLabel}>{label}</Text>
-          <Text style={styles.timeValue}>{formatTime(hour, minute)}</Text>
-        </View>
-        <View style={styles.stepperRow}>
-          <TouchableOpacity
-            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
-            onPress={() => adjustHour(-1)}
-            activeOpacity={disabled ? 1 : 0.7}
-          >
-            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>-1h</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
-            onPress={() => adjustHour(1)}
-            activeOpacity={disabled ? 1 : 0.7}
-          >
-            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>+1h</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
-            onPress={() => adjustMinute(-15)}
-            activeOpacity={disabled ? 1 : 0.7}
-          >
-            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>-15m</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.stepperButton, disabled && styles.stepperButtonDisabled]}
-            onPress={() => adjustMinute(15)}
-            activeOpacity={disabled ? 1 : 0.7}
-          >
-            <Text style={[styles.stepperText, disabled && styles.stepperTextDisabled]}>+15m</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={styles.timeDropdownSection}>
+      <Text style={styles.timeDropdownLabel}>{label}</Text>
+      <TouchableOpacity
+        style={[
+          styles.timeDropdownTrigger,
+          disabled && styles.timeDropdownTriggerDisabled,
+        ]}
+        onPress={onPress}
+        activeOpacity={disabled ? 1 : 0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${formattedTime}`}
+        aria-label={`${label}: ${formattedTime}`}
+        accessibilityState={{ disabled }}
+      >
+        <Text
+          style={[
+            styles.timeDropdownValue,
+            disabled && styles.timeDropdownValueDisabled,
+          ]}
+        >
+          {formattedTime}
+        </Text>
+        <Ionicons
+          name="chevron-down"
+          size={18}
+          color={disabled ? theme.colors.ash : theme.colors.mute}
+        />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -115,6 +92,7 @@ export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorP
   const isActive = propIsActive !== undefined ? propIsActive : engineIsActive;
   const isLocked = !canModifySettings(isActive);
   const [lockoutAttempted, setLockoutAttempted] = useState(false);
+  const [activePicker, setActivePicker] = useState<'start' | 'end' | null>(null);
 
   const handleAttemptChange = () => {
     setLockoutAttempted(true);
@@ -154,7 +132,7 @@ export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorP
       {/* Master Enable Card */}
       <View style={styles.card}>
         <View style={styles.rowBetween}>
-          <View>
+          <View style={styles.enableCardTextCol}>
             <Text style={styles.cardTitle}>Enforce Schedule</Text>
             <Text style={styles.cardSubtitle}>
               {isLocked
@@ -176,17 +154,30 @@ export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorP
               toggleEnabled();
             }}
             activeOpacity={isLocked ? 1 : 0.8}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: schedule.enabled, disabled: isLocked }}
+            accessibilityLabel={
+              isLocked
+                ? 'Curfew schedule locked (modifications restricted)'
+                : schedule.enabled
+                ? 'Curfew schedule enabled'
+                : 'Curfew schedule disabled'
+            }
+            aria-label={
+              isLocked
+                ? 'Curfew schedule locked (modifications restricted)'
+                : schedule.enabled
+                ? 'Curfew schedule enabled'
+                : 'Curfew schedule disabled'
+            }
           >
-            <View
-              style={[
-                styles.toggleDot,
-                schedule.enabled ? styles.dotActive : styles.dotInactive,
-                isLocked && styles.toggleDotLocked,
-              ]}
-            />
-            <Text style={[styles.toggleText, isLocked && styles.toggleTextLocked]}>
-              {schedule.enabled ? 'Enabled' : 'Disabled'}
-            </Text>
+            {isLocked ? (
+              <Ionicons name="lock-closed" size={16} color={theme.colors.ash} />
+            ) : schedule.enabled ? (
+              <Ionicons name="checkmark" size={16} color={theme.colors.accentGreen} />
+            ) : (
+              <Ionicons name="close" size={16} color={theme.colors.mute} />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -195,24 +186,34 @@ export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorP
       <Text style={styles.sectionHeader}>Curfew Window</Text>
 
       <View style={styles.card}>
-        <TimeAdjuster
+        <TimeDropdownSelect
           label="Curfew Window starts"
           hour={schedule.startHour}
           minute={schedule.startMinute}
           disabled={isLocked}
-          onAdjust={setStartTime}
-          onAttemptDisabled={handleAttemptChange}
+          onPress={() => {
+            if (isLocked) {
+              handleAttemptChange();
+              return;
+            }
+            setActivePicker('start');
+          }}
         />
 
         <View style={styles.divider} />
 
-        <TimeAdjuster
+        <TimeDropdownSelect
           label="Curfew Window ends"
           hour={schedule.endHour}
           minute={schedule.endMinute}
           disabled={isLocked}
-          onAdjust={setEndTime}
-          onAttemptDisabled={handleAttemptChange}
+          onPress={() => {
+            if (isLocked) {
+              handleAttemptChange();
+              return;
+            }
+            setActivePicker('end');
+          }}
         />
 
         {isOvernight ? (
@@ -250,6 +251,10 @@ export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorP
                   toggleDay(day.id);
                 }}
                 activeOpacity={isLocked ? 1 : 0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isDayActive, disabled: isLocked }}
+                accessibilityLabel={`${day.label}, ${isDayActive ? 'active' : 'inactive'}`}
+                aria-label={`${day.label}, ${isDayActive ? 'active' : 'inactive'}`}
               >
                 <Text
                   style={[
@@ -265,6 +270,23 @@ export function ScheduleEditor({ isCurfewActive: propIsActive }: ScheduleEditorP
           })}
         </View>
       </View>
+
+      {/* 15-Minute Interval Time Picker Modal */}
+      <TimePickerModal
+        visible={activePicker !== null}
+        title={activePicker === 'start' ? 'Curfew Window starts' : 'Curfew Window ends'}
+        selectedHour={activePicker === 'start' ? schedule.startHour : schedule.endHour}
+        selectedMinute={activePicker === 'start' ? schedule.startMinute : schedule.endMinute}
+        onSelect={(hour, minute) => {
+          if (activePicker === 'start') {
+            setStartTime(hour, minute);
+          } else if (activePicker === 'end') {
+            setEndTime(hour, minute);
+          }
+          setActivePicker(null);
+        }}
+        onClose={() => setActivePicker(null)}
+      />
     </ScrollView>
   );
 }
@@ -331,6 +353,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  enableCardTextCol: {
+    flex: 1,
+    paddingRight: theme.spacing.md,
+  },
   cardTitle: {
     ...theme.typography.headingMd,
     color: theme.colors.ink,
@@ -341,60 +367,56 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   togglePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    width: 36,
+    height: 36,
     borderRadius: theme.rounded.full,
     borderWidth: 1,
     borderColor: theme.colors.hairline,
     backgroundColor: theme.colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   togglePillActive: {
-    borderColor: theme.colors.hairlineStrong,
+    borderColor: theme.colors.accentGreen,
   },
   togglePillInactive: {
     borderColor: theme.colors.hairline,
   },
-  toggleDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: theme.spacing.xs,
+  togglePillDisabled: {
+    opacity: 0.6,
+    borderColor: theme.colors.hairline,
   },
-  toggleText: {
-    ...theme.typography.captionSm,
-    color: theme.colors.ink,
-    fontWeight: '500',
-  },
-  timeSection: {
+  timeDropdownSection: {
     paddingVertical: theme.spacing.xs,
   },
-  timeLabel: {
+  timeDropdownLabel: {
     ...theme.typography.captionSm,
     color: theme.colors.mute,
+    marginBottom: theme.spacing.xs,
   },
-  timeValue: {
-    ...theme.typography.headingLg,
-    color: theme.colors.ink,
-    marginTop: 2,
-  },
-  stepperRow: {
+  timeDropdownTrigger: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
-  },
-  stepperButton: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: theme.colors.surfaceElevated,
     borderColor: theme.colors.hairline,
     borderWidth: 1,
     borderRadius: theme.rounded.md,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    minHeight: 46,
   },
-  stepperText: {
-    ...theme.typography.captionSm,
+  timeDropdownTriggerDisabled: {
+    backgroundColor: theme.colors.surfaceCard,
+    opacity: 0.6,
+  },
+  timeDropdownValue: {
+    ...theme.typography.bodyLg,
     color: theme.colors.ink,
     fontWeight: '500',
+  },
+  timeDropdownValueDisabled: {
+    color: theme.colors.ash,
   },
   divider: {
     height: 1,
@@ -418,15 +440,15 @@ const styles = StyleSheet.create({
   },
   dayPill: {
     paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xs,
     borderRadius: theme.rounded.md,
     borderWidth: 1,
     minWidth: 42,
     alignItems: 'center',
   },
   dayPillActive: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.hairlineStrong,
+    backgroundColor: theme.colors.accentGreen,
+    borderColor: theme.colors.accentGreen,
   },
   dayPillInactive: {
     backgroundColor: theme.colors.surfaceCard,
@@ -434,31 +456,14 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     ...theme.typography.captionSm,
-    fontWeight: '500',
   },
   dayLabelActive: {
-    color: theme.colors.ink,
+    color: '#000000',
+    fontWeight: '600',
   },
   dayLabelInactive: {
     color: theme.colors.mute,
-  },
-  stepperButtonDisabled: {
-    backgroundColor: theme.colors.surfaceCard,
-    borderColor: theme.colors.hairline,
-    opacity: 0.5,
-  },
-  stepperTextDisabled: {
-    color: theme.colors.ash,
-  },
-  togglePillDisabled: {
-    opacity: 0.6,
-    borderColor: theme.colors.hairline,
-  },
-  toggleDotLocked: {
-    backgroundColor: theme.colors.ash,
-  },
-  toggleTextLocked: {
-    color: theme.colors.mute,
+    fontWeight: '500',
   },
   dayPillDisabled: {
     opacity: 0.5,

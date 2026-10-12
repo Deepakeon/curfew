@@ -47,6 +47,26 @@ export function formatTime(hour: number, minute: number): string {
   return `${displayHour}:${displayMinute} ${period}`;
 }
 
+export interface TimeInterval {
+  hour: number;
+  minute: number;
+  formatted: string;
+}
+
+export function generate15MinuteIntervals(): TimeInterval[] {
+  const intervals: TimeInterval[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      intervals.push({
+        hour,
+        minute,
+        formatted: formatTime(hour, minute),
+      });
+    }
+  }
+  return intervals;
+}
+
 export function isCurfewActive(schedule: CurfewSchedule, date: Date = new Date()): boolean {
   if (!schedule.enabled || schedule.activeDays.length === 0) {
     return false;
