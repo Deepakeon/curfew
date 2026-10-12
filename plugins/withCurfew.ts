@@ -2,6 +2,7 @@ import {
   ConfigPlugin,
   withAndroidManifest,
   withDangerousMod,
+  withAppBuildGradle,
   AndroidConfig,
 } from '@expo/config-plugins';
 import * as fs from 'fs';
@@ -210,12 +211,135 @@ export function syncNativeFiles(
   }
 }
 
+export function modifyAppBuildGradle(content: string): string {
+  if (content.includes('// --- Curfew Release Signing Configuration ---')) {
+    return content;
+  }
+
+  const helperBlock = `
+// --- Curfew Release Signing Configuration ---
+def keystorePropertiesFile = [
+    new File(rootDir.parentFile, "keystore.properties"),
+    new File(rootDir, "keystore.properties"),
+    file("keystore.properties")
+].find { it != null && it.exists() }
+
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def resolveKeystoreFile = { String path, File propFileDir ->
+    if (!path) return null
+    if (path.startsWith("~/")) {
+        return new File(System.getProperty("user.home"), path.substring(2))
+    }
+    def f = new File(path)
+    if (f.isAbsolute()) {
+        return f
+    }
+    if (propFileDir != null) {
+        def propRelative = new File(propFileDir, path)
+        if (propRelative.exists()) return propRelative
+    }
+    def rootRelative = new File(rootDir.parentFile, path)
+    if (rootRelative.exists()) return rootRelative
+    return propFileDir != null ? new File(propFileDir, path) : new File(rootDir.parentFile, path)
+}
+
+def releaseStoreFilePath = keystoreProperties['storeFile'] ?: System.getenv('ANDROID_KEYSTORE_PATH') ?: System.getenv('RELEASE_STORE_FILE')
+def releaseStorePassword = keystoreProperties['storePassword'] ?: System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: System.getenv('RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = keystoreProperties['keyAlias'] ?: System.getenv('ANDROID_KEY_ALIAS') ?: System.getenv('RELEASE_KEY_ALIAS')
+def releaseKeyPassword = keystoreProperties['keyPassword'] ?: System.getenv('ANDROID_KEY_PASSWORD') ?: System.getenv('RELEASE_KEY_PASSWORD')
+`;
+
+  const signingReleaseBlock = `
+        release {
+            if (releaseStoreFilePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
+                def propDir = keystorePropertiesFile != null ? keystorePropertiesFile.parentFile : null
+                storeFile resolveKeystoreFile(releaseStoreFilePath, propDir)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }`;
+
+  const taskGuardBlock = `
+gradle.taskGraph.whenReady { taskGraph ->
+    def isReleaseBuild = taskGraph.allTasks.any { task ->
+        task.name.contains("Release") && (task.name.startsWith("assemble") || task.name.startsWith("bundle") || task.name.startsWith("package"))
+    }
+    if (isReleaseBuild) {
+        if (!android.signingConfigs.release.storeFile) {
+            throw new GradleException(
+                "Release signing credentials not configured. Please create keystore.properties (see keystore.properties.example) or set environment variables (RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD)."
+            )
+        } else if (!android.signingConfigs.release.storeFile.exists()) {
+            throw new GradleException(
+                "Release keystore file not found at: \${android.signingConfigs.release.storeFile.absolutePath}. Please check 'storeFile' in keystore.properties."
+            )
+        }
+    }
+}
+`;
+
+  let result = content;
+
+  // Insert helper block before android {
+  const androidIdx = result.indexOf('android {');
+  if (androidIdx !== -1) {
+    result = result.slice(0, androidIdx) + helperBlock + '\n' + result.slice(androidIdx);
+  }
+
+  // Insert release signingConfig inside signingConfigs {
+  const debugKeystoreIdx = result.indexOf("keyPassword 'android'");
+  if (debugKeystoreIdx !== -1) {
+    const debugCloseBrace = result.indexOf('}', debugKeystoreIdx);
+    if (debugCloseBrace !== -1) {
+      result =
+        result.slice(0, debugCloseBrace + 1) +
+        '\n' +
+        signingReleaseBlock +
+        result.slice(debugCloseBrace + 1);
+    }
+  }
+
+  // Update buildTypes.release signingConfig
+  const releaseBlockIdx = result.indexOf('release {');
+  if (releaseBlockIdx !== -1) {
+    const nextSigningDebug = result.indexOf(
+      'signingConfig signingConfigs.debug',
+      releaseBlockIdx
+    );
+    if (nextSigningDebug !== -1) {
+      result =
+        result.slice(0, nextSigningDebug) +
+        'signingConfig signingConfigs.release' +
+        result.slice(
+          nextSigningDebug + 'signingConfig signingConfigs.debug'.length
+        );
+    }
+  }
+
+  // Append task guard at the end
+  result = result + '\n' + taskGuardBlock;
+
+  return result;
+}
+
 const withCurfew: ConfigPlugin = (config) => {
   config = withAndroidManifest(config, (configWithManifest) => {
     configWithManifest.modResults = modifyAndroidManifest(
       configWithManifest.modResults
     );
     return configWithManifest;
+  });
+
+  config = withAppBuildGradle(config, (configWithGradle) => {
+    configWithGradle.modResults.contents = modifyAppBuildGradle(
+      configWithGradle.modResults.contents
+    );
+    return configWithGradle;
   });
 
   config = withDangerousMod(config, [
