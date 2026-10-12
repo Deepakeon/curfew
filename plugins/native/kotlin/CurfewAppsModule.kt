@@ -47,6 +47,11 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
                     protectedLauncherPackages.add(it)
                 }
 
+                // Explicitly protect Settings and Package Installers (Uninstall Escape Hatch)
+                protectedLauncherPackages.add("com.android.settings")
+                protectedLauncherPackages.add("com.android.packageinstaller")
+                protectedLauncherPackages.add("com.google.android.packageinstaller")
+
                 // Query all launcher apps
                 val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 val resolveInfoList = pm.queryIntentActivities(launcherIntent, 0)

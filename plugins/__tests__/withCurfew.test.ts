@@ -56,13 +56,24 @@ describe('withCurfew Expo Config Plugin', () => {
     const kotlinExists = fs.existsSync(
       path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewAccessibilityService.kt')
     );
+    const overlayExists = fs.existsSync(
+      path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewOverlayView.kt')
+    );
     const packageExists = fs.existsSync(
       path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewPackage.kt')
     );
 
     expect(xmlExists).toBe(true);
     expect(kotlinExists).toBe(true);
+    expect(overlayExists).toBe(true);
     expect(packageExists).toBe(true);
+
+    const xmlContent = fs.readFileSync(
+      path.join(tempPlatform, 'app/src/main/res/xml/accessibility_service_config.xml'),
+      'utf8'
+    );
+    expect(xmlContent).toContain('typeWindowStateChanged');
+    expect(xmlContent).toContain('android:notificationTimeout="0"');
 
     // Clean up
     fs.rmSync(tempPlatform, { recursive: true, force: true });

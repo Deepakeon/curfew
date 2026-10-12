@@ -26,6 +26,77 @@ class CurfewScheduleModule(private val reactContext: ReactApplicationContext) :
         const val DEFAULT_END_HOUR = 10
         const val DEFAULT_END_MINUTE = 0
         val DEFAULT_DAYS = setOf("1", "2", "3", "4", "5", "6", "7")
+
+        fun checkCurfewActiveNow(context: Context): Boolean {
+            return getRemainingCurfewMillis(context) > 0L
+        }
+
+        fun getRemainingCurfewMillis(context: Context): Long {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val enabled = prefs.getBoolean(KEY_ENABLED, true)
+            if (!enabled) return 0L
+
+            val daysSet = prefs.getStringSet(KEY_ACTIVE_DAYS, DEFAULT_DAYS) ?: DEFAULT_DAYS
+            if (daysSet.isEmpty()) return 0L
+
+            val now = Calendar.getInstance()
+            val dayOfWeek = now.get(Calendar.DAY_OF_WEEK)
+            val isoDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
+            val prevIsoDay = if (isoDay == 1) 7 else isoDay - 1
+
+            val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+
+            val startHour = prefs.getInt(KEY_START_HOUR, DEFAULT_START_HOUR)
+            val startMinute = prefs.getInt(KEY_START_MINUTE, DEFAULT_START_MINUTE)
+            val endHour = prefs.getInt(KEY_END_HOUR, DEFAULT_END_HOUR)
+            val endMinute = prefs.getInt(KEY_END_MINUTE, DEFAULT_END_MINUTE)
+
+            val startMinutes = startHour * 60 + startMinute
+            val endMinutes = endHour * 60 + endMinute
+
+            if (startMinutes == endMinutes) return 0L
+
+            val endCal = Calendar.getInstance().apply {
+                timeInMillis = now.timeInMillis
+                set(Calendar.HOUR_OF_DAY, endHour)
+                set(Calendar.MINUTE, endMinute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            if (startMinutes < endMinutes) {
+                if (daysSet.contains(isoDay.toString()) && currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+                    val diff = endCal.timeInMillis - now.timeInMillis
+                    return if (diff > 0) diff else 0L
+                }
+                return 0L
+            }
+
+            // Overnight:
+            // Case 1: Evening start (now is after startMinutes, curfew ends tomorrow morning)
+            if (currentMinutes >= startMinutes && daysSet.contains(isoDay.toString())) {
+                endCal.add(Calendar.DAY_OF_YEAR, 1)
+                val diff = endCal.timeInMillis - now.timeInMillis
+                return if (diff > 0) diff else 0L
+            }
+
+            // Case 2: Morning end (now is before endMinutes, curfew started yesterday evening)
+            if (currentMinutes < endMinutes && daysSet.contains(prevIsoDay.toString())) {
+                val diff = endCal.timeInMillis - now.timeInMillis
+                return if (diff > 0) diff else 0L
+            }
+
+            return 0L
+        }
+
+        fun formatRemainingTime(millis: Long): String {
+            if (millis <= 0) return "00:00:00"
+            val totalSeconds = (millis + 999) / 1000
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        }
     }
 
     override fun getName(): String = "CurfewScheduleModule"
@@ -97,48 +168,6 @@ class CurfewScheduleModule(private val reactContext: ReactApplicationContext) :
             promise.resolve(success)
         } catch (e: Exception) {
             promise.reject("SET_SCHEDULE_ERROR", e.message, e)
-        }
-    }
-
-    companion object Helper {
-        fun checkCurfewActiveNow(context: Context): Boolean {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val enabled = prefs.getBoolean(KEY_ENABLED, true)
-            if (!enabled) return false
-
-            val daysSet = prefs.getStringSet(KEY_ACTIVE_DAYS, DEFAULT_DAYS) ?: DEFAULT_DAYS
-            if (daysSet.isEmpty()) return false
-
-            val calendar = Calendar.getInstance()
-            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) // 1=Sunday, 2=Monday... 7=Saturday
-            val isoDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
-            val prevIsoDay = if (isoDay == 1) 7 else isoDay - 1
-
-            val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-
-            val startHour = prefs.getInt(KEY_START_HOUR, DEFAULT_START_HOUR)
-            val startMinute = prefs.getInt(KEY_START_MINUTE, DEFAULT_START_MINUTE)
-            val endHour = prefs.getInt(KEY_END_HOUR, DEFAULT_END_HOUR)
-            val endMinute = prefs.getInt(KEY_END_MINUTE, DEFAULT_END_MINUTE)
-
-            val startMinutes = startHour * 60 + startMinute
-            val endMinutes = endHour * 60 + endMinute
-
-            // 0-duration window is inactive
-            if (startMinutes == endMinutes) {
-                return false
-            }
-
-            if (startMinutes < endMinutes) {
-                return daysSet.contains(isoDay.toString()) &&
-                        currentMinutes >= startMinutes &&
-                        currentMinutes < endMinutes
-            }
-
-            // Overnight
-            val eveningMatch = currentMinutes >= startMinutes && daysSet.contains(isoDay.toString())
-            val morningMatch = currentMinutes < endMinutes && daysSet.contains(prevIsoDay.toString())
-            return eveningMatch || morningMatch
         }
     }
 }
