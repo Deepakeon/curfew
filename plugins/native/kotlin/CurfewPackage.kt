@@ -7,7 +7,10 @@ import com.facebook.react.uimanager.ViewManager
 
 class CurfewPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(CurfewPermissionsModule(reactContext))
+        return listOf(
+            CurfewPermissionsModule(reactContext),
+            CurfewAppsModule(reactContext)
+        )
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

@@ -3,11 +3,16 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity } from 'react-native';
 import { theme } from './src/theme';
 import { OnboardingWizard } from './src/components/OnboardingWizard';
+import { AppSelectionList } from './src/components/AppSelectionList';
 import { usePermissions } from './src/hooks/usePermissions';
+
+type ActiveTab = 'apps' | 'permissions';
 
 export default function App() {
   const { permissions } = usePermissions();
-  const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    permissions.allGranted ? 'apps' : 'permissions'
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -15,59 +20,49 @@ export default function App() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Curfew</Text>
-          <TouchableOpacity
-            style={styles.headerBadge}
-            onPress={() => setShowSettings(!showSettings)}
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                styles.headerDot,
-                permissions.allGranted ? styles.dotReady : styles.dotPending,
-              ]}
-            />
-            <Text style={styles.badgeText}>
-              {permissions.allGranted ? (showSettings ? 'Dashboard' : 'Armed') : 'Setup'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {!permissions.allGranted || showSettings ? (
-          <OnboardingWizard />
-        ) : (
-          <View style={styles.dashboard}>
-            <View style={styles.statusCard}>
-              <View style={styles.statusHeader}>
-                <View style={[styles.statusDot, styles.dotReady]} />
-                <Text style={styles.statusTitle}>Curfew Engine Active</Text>
-              </View>
-              <Text style={styles.statusBody}>
-                All system permissions are granted. Curfew is standing by to enforce schedules.
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tabPill, activeTab === 'apps' && styles.tabPillActive]}
+              onPress={() => setActiveTab('apps')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'apps' && styles.tabTextActive,
+                ]}
+              >
+                Target Apps
               </Text>
-              <View style={styles.divider} />
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Accessibility Service</Text>
-                <Text style={styles.metaValue}>Connected</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Overlay Permissions</Text>
-                <Text style={styles.metaValue}>Active</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Battery Optimization</Text>
-                <Text style={styles.metaValue}>Exempted</Text>
-              </View>
-            </View>
+            </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.manageButton}
-              onPress={() => setShowSettings(true)}
-              activeOpacity={0.8}
+              style={[
+                styles.tabPill,
+                activeTab === 'permissions' && styles.tabPillActive,
+              ]}
+              onPress={() => setActiveTab('permissions')}
+              activeOpacity={0.7}
             >
-              <Text style={styles.manageButtonText}>Manage Permissions</Text>
+              <View
+                style={[
+                  styles.statusDot,
+                  permissions.allGranted ? styles.dotReady : styles.dotPending,
+                ]}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'permissions' && styles.tabTextActive,
+                ]}
+              >
+                Setup
+              </Text>
             </TouchableOpacity>
           </View>
-        )}
+        </View>
+
+        {activeTab === 'apps' ? <AppSelectionList /> : <OnboardingWizard />}
       </View>
     </SafeAreaView>
   );
@@ -94,17 +89,35 @@ const styles = StyleSheet.create({
     ...theme.typography.headingXl,
     color: theme.colors.ink,
   },
-  headerBadge: {
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: theme.colors.surfaceElevated,
     borderColor: theme.colors.hairline,
     borderWidth: 1,
     borderRadius: theme.rounded.full,
+    padding: theme.spacing.xxs,
+  },
+  tabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
+    borderRadius: theme.rounded.full,
   },
-  headerDot: {
+  tabPillActive: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderColor: theme.colors.hairlineStrong,
+    borderWidth: 1,
+  },
+  tabText: {
+    ...theme.typography.captionSm,
+    color: theme.colors.mute,
+    fontWeight: '500',
+  },
+  tabTextActive: {
+    color: theme.colors.ink,
+  },
+  statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
@@ -115,72 +128,5 @@ const styles = StyleSheet.create({
   },
   dotPending: {
     backgroundColor: theme.colors.accentYellow,
-  },
-  badgeText: {
-    ...theme.typography.captionSm,
-    color: theme.colors.ink,
-    fontWeight: '500',
-  },
-  dashboard: {
-    flex: 1,
-  },
-  statusCard: {
-    backgroundColor: theme.colors.surfaceCard,
-    borderColor: theme.colors.hairline,
-    borderWidth: 1,
-    borderRadius: theme.rounded.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: theme.spacing.sm,
-  },
-  statusTitle: {
-    ...theme.typography.headingMd,
-    color: theme.colors.ink,
-  },
-  statusBody: {
-    ...theme.typography.bodySm,
-    color: theme.colors.body,
-    marginBottom: theme.spacing.lg,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.hairline,
-    marginBottom: theme.spacing.md,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: theme.spacing.xxs,
-  },
-  metaLabel: {
-    ...theme.typography.captionMd,
-    color: theme.colors.mute,
-  },
-  metaValue: {
-    ...theme.typography.captionMd,
-    color: theme.colors.ink,
-    fontWeight: '500',
-  },
-  manageButton: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.hairline,
-    borderWidth: 1,
-    borderRadius: theme.rounded.md,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-  },
-  manageButtonText: {
-    ...theme.typography.buttonMd,
-    color: theme.colors.ink,
   },
 });
