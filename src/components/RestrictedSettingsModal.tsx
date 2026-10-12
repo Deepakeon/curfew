@@ -8,6 +8,29 @@ interface RestrictedSettingsModalProps {
   onOpenAppInfo: () => void;
 }
 
+const RESTRICTED_STEPS = [
+  {
+    number: 1,
+    title: 'Trigger Security Prompt',
+    text: 'Attempt to toggle Curfew ON in Accessibility Settings. Android will show a "Restricted setting" prompt.',
+  },
+  {
+    number: 2,
+    title: 'Open App Info',
+    text: 'Tap "Open App Info" below to navigate directly to Curfew system application settings.',
+  },
+  {
+    number: 3,
+    title: 'Unlock Restricted Settings',
+    text: 'In the top-right corner, tap the three dots (⋮), select "Allow restricted settings", and verify your PIN.',
+  },
+  {
+    number: 4,
+    title: 'Enable Accessibility',
+    text: 'Return to Accessibility Settings. The toggle switch will now be unlocked and ready to turn ON.',
+  },
+];
+
 export function RestrictedSettingsModal({
   visible,
   onClose,
@@ -24,45 +47,21 @@ export function RestrictedSettingsModal({
         <View style={styles.modalCard}>
           <Text style={styles.title}>Android 13/14 Restricted Settings</Text>
           <Text style={styles.subtitle}>
-            Android disables Accessibility by default on sideloaded apps. Follow these steps to unblock:
+            Android disables Accessibility by default on sideloaded APKs. Follow these sequential steps:
           </Text>
 
           <View style={styles.stepContainer}>
-            <View style={styles.stepRow}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
+            {RESTRICTED_STEPS.map((step) => (
+              <View key={step.number} style={styles.stepRow}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>{step.number}</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepText}>{step.text}</Text>
+                </View>
               </View>
-              <Text style={styles.stepText}>
-                Tap <Text style={styles.highlight}>Open App Info</Text> below to go to Curfew system settings.
-              </Text>
-            </View>
-
-            <View style={styles.stepRow}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <Text style={styles.stepText}>
-                In the top-right corner, tap the <Text style={styles.highlight}>three dots (⋮)</Text>.
-              </Text>
-            </View>
-
-            <View style={styles.stepRow}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <Text style={styles.stepText}>
-                Select <Text style={styles.highlight}>Allow restricted settings</Text> and verify with your PIN or fingerprint.
-              </Text>
-            </View>
-
-            <View style={styles.stepRow}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>4</Text>
-              </View>
-              <Text style={styles.stepText}>
-                Return here and tap <Text style={styles.highlight}>Grant Permission</Text> to enable Accessibility.
-              </Text>
-            </View>
+            ))}
           </View>
 
           <View style={styles.buttonRow}>
@@ -90,7 +89,7 @@ export function RestrictedSettingsModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(7, 8, 10, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.lg,
@@ -107,7 +106,7 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.headingLg,
     color: theme.colors.ink,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   subtitle: {
     ...theme.typography.bodySm,
@@ -136,17 +135,21 @@ const styles = StyleSheet.create({
   },
   stepNumberText: {
     ...theme.typography.captionSm,
-    color: theme.colors.accentBlue,
-    fontWeight: '600',
-  },
-  stepText: {
-    ...theme.typography.bodySm,
-    color: theme.colors.body,
-    flex: 1,
-  },
-  highlight: {
     color: theme.colors.ink,
     fontWeight: '600',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    ...theme.typography.captionSm,
+    color: theme.colors.ink,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  stepText: {
+    ...theme.typography.captionMd,
+    color: theme.colors.body,
   },
   buttonRow: {
     flexDirection: 'row',

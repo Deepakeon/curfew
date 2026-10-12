@@ -5,7 +5,11 @@ import { usePermissions } from '../hooks/usePermissions';
 import { PermissionCard } from './PermissionCard';
 import { RestrictedSettingsModal } from './RestrictedSettingsModal';
 
-export function OnboardingWizard() {
+interface OnboardingWizardProps {
+  onAllGranted?: () => void;
+}
+
+export function OnboardingWizard({ onAllGranted: _onAllGranted }: OnboardingWizardProps) {
   const {
     permissions,
     openAccessibility,
@@ -18,10 +22,10 @@ export function OnboardingWizard() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={[styles.statusBanner, permissions.allGranted ? styles.bannerReady : styles.bannerPending]}>
+      <View style={styles.statusBanner}>
         <View style={styles.bannerHeader}>
           <View style={[styles.statusDot, permissions.allGranted ? styles.dotReady : styles.dotPending]} />
-          <Text style={[styles.bannerTitle, permissions.allGranted ? styles.titleReady : styles.titlePending]}>
+          <Text style={styles.bannerTitle}>
             {permissions.allGranted ? 'Curfew Engine Armed' : 'Setup Required'}
           </Text>
         </View>
@@ -74,18 +78,12 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xxl,
   },
   statusBanner: {
-    borderRadius: theme.rounded.lg,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderColor: theme.colors.hairlineStrong,
     borderWidth: 1,
+    borderRadius: theme.rounded.lg,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
-  },
-  bannerReady: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.accentGreen,
-  },
-  bannerPending: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.hairline,
   },
   bannerHeader: {
     flexDirection: 'row',
@@ -106,11 +104,6 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     ...theme.typography.headingMd,
-  },
-  titleReady: {
-    color: theme.colors.accentGreen,
-  },
-  titlePending: {
     color: theme.colors.ink,
   },
   bannerSubtitle: {

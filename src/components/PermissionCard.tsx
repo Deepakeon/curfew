@@ -21,9 +21,9 @@ export function PermissionCard({
     <View style={[styles.card, granted && styles.cardGranted]}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
-        <View style={[styles.badge, granted ? styles.badgeGranted : styles.badgeMissing]}>
+        <View style={styles.badge}>
           <View style={[styles.dot, granted ? styles.dotGranted : styles.dotMissing]} />
-          <Text style={[styles.badgeText, granted ? styles.badgeTextGranted : styles.badgeTextMissing]}>
+          <Text style={styles.badgeText}>
             {granted ? 'Active' : 'Missing'}
           </Text>
         </View>
@@ -79,17 +79,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs + 1,
+    paddingVertical: theme.spacing.xs,
     borderRadius: theme.rounded.full,
     borderWidth: 1,
-  },
-  badgeGranted: {
-    backgroundColor: theme.colors.accentGreenSoft,
-    borderColor: theme.colors.accentGreen,
-  },
-  badgeMissing: {
-    backgroundColor: theme.colors.accentYellowSoft,
-    borderColor: theme.colors.accentYellow,
+    borderColor: theme.colors.hairline,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   dot: {
     width: 6,
@@ -105,13 +99,8 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...theme.typography.captionSm,
+    color: theme.colors.ink,
     fontWeight: '500',
-  },
-  badgeTextGranted: {
-    color: theme.colors.accentGreen,
-  },
-  badgeTextMissing: {
-    color: theme.colors.accentYellow,
   },
   description: {
     ...theme.typography.bodySm,
@@ -143,7 +132,7 @@ const styles = StyleSheet.create({
   },
   helpButtonText: {
     ...theme.typography.buttonMd,
-    color: theme.colors.accentBlue,
+    color: theme.colors.ink,
   },
   readyIndicator: {
     paddingVertical: theme.spacing.xs,
