@@ -3,6 +3,7 @@ node_modules/
 dist/
 web-build/
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
@@ -12,6 +13,9 @@ web-build/
 *.aab
 .env*
 coverage/
+keystore.properties
+keystore.local.properties
+keys/
 /android
 /ios
 

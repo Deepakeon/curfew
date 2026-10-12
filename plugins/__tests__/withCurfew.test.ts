@@ -1,4 +1,9 @@
-import { modifyAndroidManifest, syncNativeFiles, modifyMainApplication } from '../withCurfew';
+import {
+  modifyAndroidManifest,
+  syncNativeFiles,
+  modifyMainApplication,
+  modifyAppBuildGradle,
+} from '../withCurfew';
 import { AndroidConfig } from '@expo/config-plugins';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -111,5 +116,46 @@ describe('withCurfew Expo Config Plugin', () => {
     `;
     const updated = modifyMainApplication(mockContent);
     expect(updated).toContain('add(CurfewPackage())');
+  });
+
+  describe('modifyAppBuildGradle release signing configuration', () => {
+    const mockBuildGradle = `
+android {
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled enableMinifyInReleaseBuilds
+        }
+    }
+}
+`;
+
+    it('injects release signingConfig, keystore.properties parsing, and release task guard', () => {
+      const modified = modifyAppBuildGradle(mockBuildGradle);
+
+      expect(modified).toContain('keystore.properties');
+      expect(modified).toContain('signingConfigs {');
+      expect(modified).toContain('release {');
+      expect(modified).toContain('signingConfig signingConfigs.release');
+      expect(modified).toContain('taskGraph.whenReady');
+      expect(modified).toContain('Release signing credentials not configured');
+    });
+
+    it('is idempotent when executed repeatedly', () => {
+      const once = modifyAppBuildGradle(mockBuildGradle);
+      const twice = modifyAppBuildGradle(once);
+      expect(twice).toEqual(once);
+    });
   });
 });
