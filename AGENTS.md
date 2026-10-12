@@ -1,0 +1,20 @@
+# AGENTS.md
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical triage roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
+
+### Design system
+
+Dark-canvas Raycast system tokens, components, and colors. See `DESIGN.md`.
+
