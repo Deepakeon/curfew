@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { theme } from '../theme';
 import { useCurfewSchedule } from '../hooks/useCurfewSchedule';
-import { formatTime } from '../services/schedule';
+import { formatTime, isOvernightWindow } from '../services/schedule';
 
 const DAYS = [
   { id: 1, label: 'Mon' },
@@ -19,6 +19,48 @@ const DAYS = [
   { id: 6, label: 'Sat' },
   { id: 7, label: 'Sun' },
 ];
+
+interface TimeAdjusterProps {
+  label: string;
+  hour: number;
+  minute: number;
+  onAdjust: (newHour: number, newMinute: number) => void;
+}
+
+function TimeAdjuster({ label, hour, minute, onAdjust }: TimeAdjusterProps) {
+  const adjustHour = (delta: number) => {
+    onAdjust((hour + delta + 24) % 24, minute);
+  };
+
+  const adjustMinute = (delta: number) => {
+    onAdjust(hour, (minute + delta + 60) % 60);
+  };
+
+  return (
+    <View style={styles.timeSection}>
+      <View style={styles.rowBetween}>
+        <View>
+          <Text style={styles.timeLabel}>{label}</Text>
+          <Text style={styles.timeValue}>{formatTime(hour, minute)}</Text>
+        </View>
+        <View style={styles.stepperRow}>
+          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustHour(-1)}>
+            <Text style={styles.stepperText}>-1h</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustHour(1)}>
+            <Text style={styles.stepperText}>+1h</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustMinute(-15)}>
+            <Text style={styles.stepperText}>-15m</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stepperButton} onPress={() => adjustMinute(15)}>
+            <Text style={styles.stepperText}>+15m</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export function ScheduleEditor() {
   const {
@@ -31,18 +73,7 @@ export function ScheduleEditor() {
     setEndTime,
   } = useCurfewSchedule();
 
-  const isOvernight =
-    schedule.startHour * 60 + schedule.startMinute >
-    schedule.endHour * 60 + schedule.endMinute;
-
-  const adjustHour = (currentHour: number, delta: number): number => {
-    return (currentHour + delta + 24) % 24;
-  };
-
-  const adjustMinute = (currentMinute: number, delta: number): number => {
-    return (currentMinute + delta + 60) % 60;
-  };
-
+  const isOvernight = isOvernightWindow(schedule);
   const hoursRemaining = Math.floor(transition.minutesRemaining / 60);
   const minsRemaining = transition.minutesRemaining % 60;
 
@@ -60,7 +91,7 @@ export function ScheduleEditor() {
           {schedule.enabled
             ? isActive
               ? `Enforcing restrictions until ${transition.targetTimeFormatted} (${hoursRemaining}h ${minsRemaining}m remaining).`
-              : `Next curfew begins at ${transition.targetTimeFormatted} (${hoursRemaining}h ${minsRemaining}m from now).`
+              : `Next Curfew Window begins at ${transition.targetTimeFormatted} (${hoursRemaining}h ${minsRemaining}m from now).`
             : 'Schedule is paused. Target apps are unrestricted.'}
         </Text>
       </View>
@@ -89,71 +120,21 @@ export function ScheduleEditor() {
       <Text style={styles.sectionHeader}>Curfew Window</Text>
 
       <View style={styles.card}>
-        {/* Start Time */}
-        <View style={styles.timeSection}>
-          <View style={styles.rowBetween}>
-            <View>
-              <Text style={styles.timeLabel}>Start Time (Lock begins)</Text>
-              <Text style={styles.timeValue}>
-                {formatTime(schedule.startHour, schedule.startMinute)}
-              </Text>
-            </View>
-            <View style={styles.stepperRow}>
-              <TouchableOpacity
-                style={styles.stepperButton}
-                onPress={() => setStartTime(adjustHour(schedule.startHour, -1), schedule.startMinute)}
-              >
-                <Text style={styles.stepperText}>-1h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stepperButton}
-                onPress={() => setStartTime(adjustHour(schedule.startHour, 1), schedule.startMinute)}
-              >
-                <Text style={styles.stepperText}>+1h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stepperButton}
-                onPress={() => setStartTime(schedule.startHour, adjustMinute(schedule.startMinute, 15))}
-              >
-                <Text style={styles.stepperText}>+15m</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <TimeAdjuster
+          label="Curfew Window starts"
+          hour={schedule.startHour}
+          minute={schedule.startMinute}
+          onAdjust={setStartTime}
+        />
 
         <View style={styles.divider} />
 
-        {/* End Time */}
-        <View style={styles.timeSection}>
-          <View style={styles.rowBetween}>
-            <View>
-              <Text style={styles.timeLabel}>End Time (Lock lifts)</Text>
-              <Text style={styles.timeValue}>
-                {formatTime(schedule.endHour, schedule.endMinute)}
-              </Text>
-            </View>
-            <View style={styles.stepperRow}>
-              <TouchableOpacity
-                style={styles.stepperButton}
-                onPress={() => setEndTime(adjustHour(schedule.endHour, -1), schedule.endMinute)}
-              >
-                <Text style={styles.stepperText}>-1h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stepperButton}
-                onPress={() => setEndTime(adjustHour(schedule.endHour, 1), schedule.endMinute)}
-              >
-                <Text style={styles.stepperText}>+1h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stepperButton}
-                onPress={() => setEndTime(schedule.endHour, adjustMinute(schedule.endMinute, 15))}
-              >
-                <Text style={styles.stepperText}>+15m</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <TimeAdjuster
+          label="Curfew Window ends"
+          hour={schedule.endHour}
+          minute={schedule.endMinute}
+          onAdjust={setEndTime}
+        />
 
         {isOvernight ? (
           <View style={styles.overnightBadge}>

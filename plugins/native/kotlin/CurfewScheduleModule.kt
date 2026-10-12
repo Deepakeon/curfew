@@ -100,16 +100,6 @@ class CurfewScheduleModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
-    @ReactMethod
-    fun isCurfewActive(promise: Promise) {
-        try {
-            val active = checkCurfewActiveNow(reactContext)
-            promise.resolve(active)
-        } catch (e: Exception) {
-            promise.reject("CHECK_CURFEW_ACTIVE_ERROR", e.message, e)
-        }
-    }
-
     companion object Helper {
         fun checkCurfewActiveNow(context: Context): Boolean {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -134,8 +124,9 @@ class CurfewScheduleModule(private val reactContext: ReactApplicationContext) :
             val startMinutes = startHour * 60 + startMinute
             val endMinutes = endHour * 60 + endMinute
 
+            // 0-duration window is inactive
             if (startMinutes == endMinutes) {
-                return daysSet.contains(isoDay.toString())
+                return false
             }
 
             if (startMinutes < endMinutes) {

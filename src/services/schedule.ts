@@ -34,6 +34,12 @@ export function getIsoDay(date: Date): number {
   return day === 0 ? 7 : day;
 }
 
+export function isOvernightWindow(schedule: CurfewSchedule): boolean {
+  const startMinutes = schedule.startHour * 60 + schedule.startMinute;
+  const endMinutes = schedule.endHour * 60 + schedule.endMinute;
+  return startMinutes > endMinutes;
+}
+
 export function formatTime(hour: number, minute: number): string {
   const period = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour % 12 === 0 ? 12 : hour % 12;
@@ -46,16 +52,17 @@ export function isCurfewActive(schedule: CurfewSchedule, date: Date = new Date()
     return false;
   }
 
-  const currentDay = getIsoDay(date);
-  const prevDay = currentDay === 1 ? 7 : currentDay - 1;
-
   const currentMinutes = date.getHours() * 60 + date.getMinutes();
   const startMinutes = schedule.startHour * 60 + schedule.startMinute;
   const endMinutes = schedule.endHour * 60 + schedule.endMinute;
 
+  // 0-duration window is inactive
   if (startMinutes === endMinutes) {
-    return schedule.activeDays.includes(currentDay);
+    return false;
   }
+
+  const currentDay = getIsoDay(date);
+  const prevDay = currentDay === 1 ? 7 : currentDay - 1;
 
   if (startMinutes < endMinutes) {
     // Same-day window (e.g. 13:00 to 17:00)
@@ -86,7 +93,7 @@ export function getNextTransition(
 
   if (isActive) {
     let minutesRemaining = 0;
-    if (startMinutes > endMinutes && currentMinutes >= startMinutes) {
+    if (isOvernightWindow(schedule) && currentMinutes >= startMinutes) {
       minutesRemaining = 24 * 60 - currentMinutes + endMinutes;
     } else {
       minutesRemaining = endMinutes - currentMinutes;
@@ -99,17 +106,35 @@ export function getNextTransition(
     };
   }
 
-  // Inactive: calculate time until start
-  let minutesRemaining = 0;
-  if (startMinutes > currentMinutes) {
-    minutesRemaining = startMinutes - currentMinutes;
-  } else {
-    minutesRemaining = 24 * 60 - currentMinutes + startMinutes;
+  // When inactive: find the next active start day and time
+  const currentDay = getIsoDay(date);
+
+  // Check if today is active and window hasn't started yet
+  if (schedule.activeDays.includes(currentDay) && currentMinutes < startMinutes) {
+    return {
+      isActive: false,
+      minutesRemaining: startMinutes - currentMinutes,
+      targetTimeFormatted: formatTime(schedule.startHour, schedule.startMinute),
+    };
+  }
+
+  // Look ahead across the next 7 days
+  for (let offset = 1; offset <= 7; offset++) {
+    const nextDay = ((currentDay - 1 + offset) % 7) + 1;
+    if (schedule.activeDays.includes(nextDay)) {
+      const minutesRemaining =
+        24 * 60 - currentMinutes + (offset - 1) * 24 * 60 + startMinutes;
+      return {
+        isActive: false,
+        minutesRemaining,
+        targetTimeFormatted: formatTime(schedule.startHour, schedule.startMinute),
+      };
+    }
   }
 
   return {
     isActive: false,
-    minutesRemaining: Math.max(0, minutesRemaining),
+    minutesRemaining: 0,
     targetTimeFormatted: formatTime(schedule.startHour, schedule.startMinute),
   };
 }
