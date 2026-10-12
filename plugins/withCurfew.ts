@@ -25,13 +25,15 @@ export function modifyAndroidManifest(
   }
 
   const existingPermissions = new Set(
-    manifest['uses-permission'].map((p: any) => p.$['android:name'])
+    manifest['uses-permission'].map(
+      (permNode: any) => permNode.$['android:name']
+    )
   );
 
-  for (const perm of REQUIRED_PERMISSIONS) {
-    if (!existingPermissions.has(perm)) {
+  for (const permission of REQUIRED_PERMISSIONS) {
+    if (!existingPermissions.has(permission)) {
       manifest['uses-permission'].push({
-        $: { 'android:name': perm },
+        $: { 'android:name': permission },
       } as any);
     }
   }
@@ -42,7 +44,8 @@ export function modifyAndroidManifest(
       app.service = [];
     }
     const hasAccessibilityService = app.service.some(
-      (s: any) => s.$['android:name'] === '.CurfewAccessibilityService'
+      (serviceNode: any) =>
+        serviceNode.$['android:name'] === '.CurfewAccessibilityService'
     );
     if (!hasAccessibilityService) {
       app.service.push({
@@ -77,7 +80,8 @@ export function modifyAndroidManifest(
       app.receiver = [];
     }
     const hasBootReceiver = app.receiver.some(
-      (r: any) => r.$['android:name'] === '.BootReceiver'
+      (receiverNode: any) =>
+        receiverNode.$['android:name'] === '.BootReceiver'
     );
     if (!hasBootReceiver) {
       app.receiver.push({
@@ -104,7 +108,11 @@ export function modifyAndroidManifest(
   return androidManifest;
 }
 
-export function syncNativeFiles(platformRoot: string, projectRoot: string) {
+export function syncNativeFiles(
+  platformRoot: string,
+  projectRoot: string,
+  packageName: string = 'com.curfew'
+) {
   const resXmlTarget = path.join(platformRoot, 'app/src/main/res/xml');
   if (!fs.existsSync(resXmlTarget)) {
     fs.mkdirSync(resXmlTarget, { recursive: true });
@@ -121,9 +129,11 @@ export function syncNativeFiles(platformRoot: string, projectRoot: string) {
     );
   }
 
+  const packageSubpath = packageName.replace(/\./g, '/');
   const javaTarget = path.join(
     platformRoot,
-    'app/src/main/java/com/curfew'
+    'app/src/main/java',
+    packageSubpath
   );
   if (!fs.existsSync(javaTarget)) {
     fs.mkdirSync(javaTarget, { recursive: true });
@@ -131,8 +141,8 @@ export function syncNativeFiles(platformRoot: string, projectRoot: string) {
 
   const kotlinSourceDir = path.join(projectRoot, 'plugins/native/kotlin');
   if (fs.existsSync(kotlinSourceDir)) {
-    const files = fs.readdirSync(kotlinSourceDir);
-    for (const file of files) {
+    const nativeFiles = fs.readdirSync(kotlinSourceDir);
+    for (const file of nativeFiles) {
       fs.copyFileSync(
         path.join(kotlinSourceDir, file),
         path.join(javaTarget, file)
@@ -152,9 +162,11 @@ const withCurfew: ConfigPlugin = (config) => {
   config = withDangerousMod(config, [
     'android',
     async (dangerousConfig) => {
+      const packageName = dangerousConfig.android?.package || 'com.curfew';
       syncNativeFiles(
         dangerousConfig.modRequest.platformProjectRoot,
-        dangerousConfig.modRequest.projectRoot
+        dangerousConfig.modRequest.projectRoot,
+        packageName
       );
       return dangerousConfig;
     },

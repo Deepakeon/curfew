@@ -30,50 +30,85 @@ export const theme = {
     accentBlueSoft: 'rgba(87,193,255,0.15)',
   },
   typography: {
-    hero: {
-      fontSize: 32,
-      fontWeight: '700' as const,
+    displayLg: {
+      fontSize: 56,
+      fontWeight: '500' as const,
+      lineHeight: 65,
+      color: '#f4f4f6',
+    },
+    headingXl: {
+      fontSize: 24,
+      fontWeight: '500' as const,
       lineHeight: 38,
       color: '#f4f4f6',
     },
-    title: {
-      fontSize: 20,
-      fontWeight: '600' as const,
+    headingLg: {
+      fontSize: 22,
+      fontWeight: '500' as const,
       lineHeight: 26,
       color: '#f4f4f6',
     },
-    body: {
-      fontSize: 15,
+    headingMd: {
+      fontSize: 20,
+      fontWeight: '500' as const,
+      lineHeight: 28,
+      color: '#f4f4f6',
+    },
+    bodyLg: {
+      fontSize: 18,
+      fontWeight: '400' as const,
+      lineHeight: 28,
+      color: '#cdcdcd',
+    },
+    bodyMd: {
+      fontSize: 16,
+      fontWeight: '400' as const,
+      lineHeight: 26,
+      color: '#cdcdcd',
+    },
+    bodySm: {
+      fontSize: 14,
       fontWeight: '400' as const,
       lineHeight: 22,
       color: '#cdcdcd',
     },
-    caption: {
+    captionMd: {
       fontSize: 13,
       fontWeight: '400' as const,
       lineHeight: 18,
       color: '#9c9c9d',
     },
-    code: {
-      fontFamily: 'monospace',
-      fontSize: 13,
-      color: '#57c1ff',
+    captionSm: {
+      fontSize: 12,
+      fontWeight: '400' as const,
+      lineHeight: 18,
+      color: '#9c9c9d',
+    },
+    buttonMd: {
+      fontSize: 14,
+      fontWeight: '500' as const,
+      lineHeight: 22,
+      color: '#f4f4f6',
     },
   },
   rounded: {
+    none: 0,
     xs: 4,
     sm: 6,
     md: 8,
-    lg: 12,
+    lg: 10,
     xl: 16,
     full: 9999,
   },
   spacing: {
+    xxs: 2,
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    xxl: 32,
+    section: 96,
   },
 } as const;
 

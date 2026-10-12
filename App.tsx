@@ -19,7 +19,7 @@ export default function App() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Digital Curfew</Text>
           <Text style={styles.cardBody}>
-            Offline screen-time enforcement. Target apps are locked during scheduled curfew windows.
+            Offline screen-time enforcement. Target Apps are restricted during scheduled Curfew Windows.
           </Text>
           <View style={styles.divider} />
           <View style={styles.metaRow}>
@@ -44,8 +44,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.canvas,
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   title: {
-    ...theme.typography.hero,
+    ...theme.typography.headingXl,
     color: theme.colors.ink,
   },
   statusPill: {
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    ...theme.typography.caption,
+    ...theme.typography.captionSm,
     color: theme.colors.ink,
     fontWeight: '500',
   },
@@ -84,17 +84,17 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.hairline,
     borderWidth: 1,
     borderRadius: theme.rounded.lg,
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
   },
   cardTitle: {
-    ...theme.typography.title,
+    ...theme.typography.headingMd,
     color: theme.colors.ink,
     marginBottom: theme.spacing.xs,
   },
   cardBody: {
-    ...theme.typography.body,
+    ...theme.typography.bodyMd,
     color: theme.colors.body,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   divider: {
     height: 1,
@@ -104,14 +104,14 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 4,
+    marginVertical: theme.spacing.xxs,
   },
   metaLabel: {
-    ...theme.typography.caption,
+    ...theme.typography.captionMd,
     color: theme.colors.mute,
   },
   metaValue: {
-    ...theme.typography.caption,
+    ...theme.typography.captionMd,
     color: theme.colors.ink,
     fontWeight: '500',
   },

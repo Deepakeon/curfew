@@ -3,18 +3,21 @@ import { AndroidConfig } from '@expo/config-plugins';
 import * as fs from 'fs';
 import * as path from 'path';
 
+function createMockManifest(): AndroidConfig.Manifest.AndroidManifest {
+  return {
+    manifest: {
+      $: { 'xmlns:android': 'http://schemas.android.com/apk/res/android', package: 'com.curfew' },
+      application: [{ $: { 'android:name': '.MainApplication' } }],
+    },
+  } as unknown as AndroidConfig.Manifest.AndroidManifest;
+}
+
 describe('withCurfew Expo Config Plugin', () => {
   it('injects required Android permissions into AndroidManifest', () => {
-    const mockManifest = {
-      manifest: {
-        $: { 'xmlns:android': 'http://schemas.android.com/apk/res/android', package: 'com.curfew' },
-        application: [{ $: { 'android:name': '.MainApplication' } }],
-      },
-    } as unknown as AndroidConfig.Manifest.AndroidManifest;
-
+    const mockManifest = createMockManifest();
     const updated = modifyAndroidManifest(mockManifest);
     const permissions = (updated.manifest['uses-permission'] || []).map(
-      (p: any) => p.$['android:name']
+      (permNode: any) => permNode.$['android:name']
     );
 
     expect(permissions).toContain('android.permission.QUERY_ALL_PACKAGES');
@@ -25,34 +28,33 @@ describe('withCurfew Expo Config Plugin', () => {
   });
 
   it('declares CurfewAccessibilityService and BootReceiver in application', () => {
-    const mockManifest = {
-      manifest: {
-        $: { 'xmlns:android': 'http://schemas.android.com/apk/res/android', package: 'com.curfew' },
-        application: [{ $: { 'android:name': '.MainApplication' } }],
-      },
-    } as unknown as AndroidConfig.Manifest.AndroidManifest;
-
+    const mockManifest = createMockManifest();
     const updated = modifyAndroidManifest(mockManifest);
     const app = updated.manifest.application![0];
 
-    const serviceNames = (app.service || []).map((s: any) => s.$['android:name']);
+    const serviceNames = (app.service || []).map(
+      (serviceNode: any) => serviceNode.$['android:name']
+    );
     expect(serviceNames).toContain('.CurfewAccessibilityService');
 
-    const receiverNames = (app.receiver || []).map((r: any) => r.$['android:name']);
+    const receiverNames = (app.receiver || []).map(
+      (receiverNode: any) => receiverNode.$['android:name']
+    );
     expect(receiverNames).toContain('.BootReceiver');
   });
 
-  it('syncNativeFiles copies XML and Kotlin native files to android directory', () => {
+  it('syncNativeFiles copies XML and Kotlin native files to dynamic package directory', () => {
     const tempPlatform = path.join(__dirname, '__temp_platform__');
     const projectRoot = path.join(__dirname, '..', '..');
+    const customPackage = 'com.custom.curfew';
 
-    syncNativeFiles(tempPlatform, projectRoot);
+    syncNativeFiles(tempPlatform, projectRoot, customPackage);
 
     const xmlExists = fs.existsSync(
       path.join(tempPlatform, 'app/src/main/res/xml/accessibility_service_config.xml')
     );
     const kotlinExists = fs.existsSync(
-      path.join(tempPlatform, 'app/src/main/java/com/curfew/CurfewAccessibilityService.kt')
+      path.join(tempPlatform, 'app/src/main/java/com/custom/curfew/CurfewAccessibilityService.kt')
     );
 
     expect(xmlExists).toBe(true);

@@ -22,11 +22,26 @@ describe('Raycast Theme Tokens (DESIGN.md)', () => {
     expect(theme.colors.accentBlue).toBe('#57c1ff');
   });
 
-  it('exposes radii and spacing tokens', () => {
+  it('exposes exact DESIGN.md radii and spacing ladders', () => {
+    expect(theme.rounded.none).toBe(0);
     expect(theme.rounded.sm).toBe(6);
     expect(theme.rounded.md).toBe(8);
-    expect(theme.rounded.lg).toBe(12);
+    expect(theme.rounded.lg).toBe(10);
     expect(theme.rounded.full).toBe(9999);
-    expect(theme.spacing.md).toBe(16);
+
+    expect(theme.spacing.xxs).toBe(2);
+    expect(theme.spacing.xs).toBe(4);
+    expect(theme.spacing.sm).toBe(8);
+    expect(theme.spacing.md).toBe(12);
+    expect(theme.spacing.lg).toBe(16);
+    expect(theme.spacing.xl).toBe(24);
+    expect(theme.spacing.xxl).toBe(32);
+  });
+
+  it('exposes standard DESIGN.md typography scale', () => {
+    expect(theme.typography.headingMd.fontSize).toBe(20);
+    expect(theme.typography.headingMd.fontWeight).toBe('500');
+    expect(theme.typography.bodyMd.fontSize).toBe(16);
+    expect(theme.typography.bodyMd.fontWeight).toBe('400');
   });
 });
