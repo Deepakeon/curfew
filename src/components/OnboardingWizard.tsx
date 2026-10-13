@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { usePermissions } from '../hooks/usePermissions';
 import { PermissionCard } from './PermissionCard';
 import { RestrictedSettingsModal } from './RestrictedSettingsModal';
+import { PermissionsState } from '../services/permissions';
 
 interface OnboardingWizardProps {
   onAllGranted?: () => void;
+  permissions?: PermissionsState;
 }
 
-export function OnboardingWizard({ onAllGranted: _onAllGranted }: OnboardingWizardProps) {
+export function OnboardingWizard({
+  onAllGranted,
+  permissions: customPermissions,
+}: OnboardingWizardProps) {
   const {
-    permissions,
+    permissions: hookPermissions,
     openAccessibility,
     openOverlay,
     openBatteryOptimization,
     openAppInfo,
   } = usePermissions();
 
+  const permissions = customPermissions ?? hookPermissions;
   const [modalVisible, setModalVisible] = useState(false);
 
   return (
@@ -65,6 +71,18 @@ export function OnboardingWizard({ onAllGranted: _onAllGranted }: OnboardingWiza
         onClose={() => setModalVisible(false)}
         onOpenAppInfo={openAppInfo}
       />
+
+      {permissions.allGranted && onAllGranted ? (
+        <TouchableOpacity
+          style={styles.continueButton}
+          onPress={onAllGranted}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Continue to Schedule"
+        >
+          <Text style={styles.continueButtonText}>Continue to Schedule</Text>
+        </TouchableOpacity>
+      ) : null}
     </ScrollView>
   );
 }
@@ -116,5 +134,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: theme.spacing.md,
+  },
+  continueButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.rounded.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: theme.spacing.md,
+  },
+  continueButtonText: {
+    ...theme.typography.buttonMd,
+    color: theme.colors.onPrimary,
   },
 });

@@ -7,13 +7,31 @@ import {
 } from '../services/permissions';
 
 export function usePermissions(driver: PermissionsDriver = defaultPermissionsDriver) {
-  const [permissions, setPermissions] = useState<PermissionsState>({
-    accessibility: false,
-    overlay: false,
-    batteryIgnored: false,
-    allGranted: false,
+  const [permissions, setPermissions] = useState<PermissionsState>(() => {
+    try {
+      if (typeof driver.checkPermissionsSync === 'function') {
+        return driver.checkPermissionsSync();
+      }
+    } catch {
+      // Fallback to default state
+    }
+    return {
+      accessibility: false,
+      overlay: false,
+      batteryIgnored: false,
+      allGranted: false,
+    };
   });
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    try {
+      if (typeof driver.checkPermissionsSync === 'function') {
+        return false;
+      }
+    } catch {
+      // Fallback to loading
+    }
+    return true;
+  });
 
   const refresh = useCallback(async () => {
     try {

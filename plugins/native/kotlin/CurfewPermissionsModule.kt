@@ -1,36 +1,44 @@
 package com.curfew
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.WritableMap
 
 class CurfewPermissionsModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
     override fun getName(): String = "CurfewPermissions"
 
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun checkPermissionsSync(): WritableMap {
+        val accessibilityGranted = isAccessibilityServiceEnabled()
+        val overlayGranted = isOverlayPermissionGranted()
+        val batteryIgnored = isBatteryOptimizationIgnored()
+        val allGranted = accessibilityGranted && overlayGranted && batteryIgnored
+
+        return Arguments.createMap().apply {
+            putBoolean("accessibility", accessibilityGranted)
+            putBoolean("overlay", overlayGranted)
+            putBoolean("batteryIgnored", batteryIgnored)
+            putBoolean("allGranted", allGranted)
+        }
+    }
+
     @ReactMethod
     fun checkPermissions(promise: Promise) {
         try {
-            val accessibilityGranted = isAccessibilityServiceEnabled()
-            val overlayGranted = isOverlayPermissionGranted()
-            val batteryIgnored = isBatteryOptimizationIgnored()
-            val allGranted = accessibilityGranted && overlayGranted && batteryIgnored
-
-            val map = Arguments.createMap().apply {
-                putBoolean("accessibility", accessibilityGranted)
-                putBoolean("overlay", overlayGranted)
-                putBoolean("batteryIgnored", batteryIgnored)
-                putBoolean("allGranted", allGranted)
-            }
+            val map = checkPermissionsSync()
             promise.resolve(map)
         } catch (e: Exception) {
             promise.reject("CHECK_PERMISSIONS_ERROR", e.message, e)
@@ -95,6 +103,23 @@ class CurfewPermissionsModule(private val reactContext: ReactApplicationContext)
 
     private fun isAccessibilityServiceEnabled(): Boolean {
         try {
+            val accessibilityManager = reactContext.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+            val enabledServicesList = accessibilityManager?.getEnabledAccessibilityServiceList(
+                AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+            )
+            if (enabledServicesList != null) {
+                for (service in enabledServicesList) {
+                    val serviceInfo = service.resolveInfo?.serviceInfo
+                    if (serviceInfo != null &&
+                        serviceInfo.packageName.equals(reactContext.packageName, ignoreCase = true) &&
+                        (serviceInfo.name.endsWith("CurfewAccessibilityService") ||
+                         serviceInfo.name.equals(".CurfewAccessibilityService", ignoreCase = true))
+                    ) {
+                        return true
+                    }
+                }
+            }
+
             val accessibilityEnabled = Settings.Secure.getInt(
                 reactContext.contentResolver,
                 Settings.Secure.ACCESSIBILITY_ENABLED,
@@ -113,8 +138,11 @@ class CurfewPermissionsModule(private val reactContext: ReactApplicationContext)
 
             val enabledServiceComponents = enabledServices.split(":")
             for (component in enabledServiceComponents) {
-                if (component.equals(expectedServiceName, ignoreCase = true) ||
-                    component.equals(expectedFullServiceName, ignoreCase = true)
+                val trimmed = component.trim()
+                if (trimmed.equals(expectedServiceName, ignoreCase = true) ||
+                    trimmed.equals(expectedFullServiceName, ignoreCase = true) ||
+                    (trimmed.startsWith("${reactContext.packageName}/", ignoreCase = true) &&
+                     trimmed.endsWith("CurfewAccessibilityService", ignoreCase = true))
                 ) {
                     return true
                 }

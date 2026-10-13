@@ -9,15 +9,34 @@ import { usePermissions } from './src/hooks/usePermissions';
 import { useCurfewSchedule } from './src/hooks/useCurfewSchedule';
 
 import { getAndroidStatusBarHeight } from './src/utils/layout';
+import { resolveActiveTab, ActiveTab } from './src/utils/navigation';
 
-type ActiveTab = 'schedule' | 'apps' | 'setup';
+export { ActiveTab };
 
-export default function App() {
+export interface AppProps {
+  initialTab?: ActiveTab;
+  [key: string]: unknown;
+}
+
+export default function App({ initialTab }: AppProps = {}) {
   const { permissions } = usePermissions();
   const { isActive: isCurfewRunning } = useCurfewSchedule();
-  const [activeTab, setActiveTab] = useState<ActiveTab>(
-    permissions.allGranted ? 'schedule' : 'setup'
+  const [selectedTab, setSelectedTab] = useState<ActiveTab | null>(
+    initialTab ?? null
   );
+
+  const activeTab = resolveActiveTab({
+    permissions,
+    userSelectedTab: selectedTab,
+  });
+
+  const handleTabPress = (tab: ActiveTab) => {
+    setSelectedTab(tab);
+  };
+
+  const handleAllGranted = () => {
+    setSelectedTab('schedule');
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,8 +61,11 @@ export default function App() {
 
           <View style={styles.tabBar}>
             <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'schedule' && styles.tabPillActive]}
-              onPress={() => setActiveTab('schedule')}
+              style={[
+                styles.tabPill,
+                activeTab === 'schedule' && styles.tabPillActive,
+              ]}
+              onPress={() => handleTabPress('schedule')}
               activeOpacity={0.7}
             >
               <Text
@@ -57,8 +79,11 @@ export default function App() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'apps' && styles.tabPillActive]}
-              onPress={() => setActiveTab('apps')}
+              style={[
+                styles.tabPill,
+                activeTab === 'apps' && styles.tabPillActive,
+              ]}
+              onPress={() => handleTabPress('apps')}
               activeOpacity={0.7}
             >
               <Text
@@ -72,8 +97,11 @@ export default function App() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'setup' && styles.tabPillActive]}
-              onPress={() => setActiveTab('setup')}
+              style={[
+                styles.tabPill,
+                activeTab === 'setup' && styles.tabPillActive,
+              ]}
+              onPress={() => handleTabPress('setup')}
               activeOpacity={0.7}
             >
               <View
@@ -100,7 +128,12 @@ export default function App() {
         {activeTab === 'apps' && (
           <AppSelectionList isCurfewActive={isCurfewRunning} />
         )}
-        {activeTab === 'setup' && <OnboardingWizard />}
+        {activeTab === 'setup' && (
+          <OnboardingWizard
+            permissions={permissions}
+            onAllGranted={handleAllGranted}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
