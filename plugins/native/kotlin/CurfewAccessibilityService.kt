@@ -7,6 +7,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
@@ -31,6 +32,7 @@ class CurfewAccessibilityService : AccessibilityService() {
     private var overlayView: CurfewOverlayView? = null
     private var isOverlayShown = false
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var suppressInterceptionUntilMs = 0L
 
     private val countdownRunnable = object : Runnable {
         override fun run() {
@@ -60,6 +62,9 @@ class CurfewAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            return
+        }
+        if (SystemClock.uptimeMillis() < suppressInterceptionUntilMs) {
             return
         }
 
@@ -177,16 +182,18 @@ class CurfewAccessibilityService : AccessibilityService() {
     }
 
     private fun exitToHome() {
+        suppressInterceptionUntilMs = SystemClock.uptimeMillis() + 800L
+        removeOverlay()
         try {
-            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_HOME)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(homeIntent)
             }
-            startActivity(homeIntent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to navigate to Home", e)
-        } finally {
-            removeOverlay()
         }
     }
 

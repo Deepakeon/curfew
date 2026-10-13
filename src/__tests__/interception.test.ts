@@ -69,4 +69,21 @@ describe('Accessibility Interception & System Overlay Policy', () => {
     expect(shouldInterceptPackage('com.google.android.dialer', activeSchedule, targetPackages, activeTime)).toBe(false);
     expect(shouldInterceptPackage('com.google.android.GoogleCamera', activeSchedule, targetPackages, activeTime)).toBe(false);
   });
+
+  describe('Native Exit-to-Home interception suppression verification', () => {
+    const fs = require('fs');
+    const path = require('path');
+
+    it('CurfewAccessibilityService.kt suppresses immediate re-interception and uses HOME global action', () => {
+      const servicePath = path.join(
+        __dirname,
+        '../../plugins/native/kotlin/CurfewAccessibilityService.kt'
+      );
+      const content = fs.readFileSync(servicePath, 'utf8');
+      expect(content).toContain('suppressInterceptionUntilMs');
+      expect(content).toContain('SystemClock.uptimeMillis() < suppressInterceptionUntilMs');
+      expect(content).toContain('performGlobalAction(GLOBAL_ACTION_HOME)');
+      expect(content).toContain('removeOverlay()');
+    });
+  });
 });
