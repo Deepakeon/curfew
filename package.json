@@ -4,7 +4,11 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
+    "android": "expo run:android --variant debug",
+    "android:debug": "expo run:android --variant debug",
+    "android:release": "expo run:android --variant release",
+    "build:android:debug": "cd android && ./gradlew assembleDebug",
+    "build:android:release": "cd android && ./gradlew assembleRelease",
     "prebuild": "expo prebuild",
     "test": "jest",
     "typecheck": "tsc --noEmit"

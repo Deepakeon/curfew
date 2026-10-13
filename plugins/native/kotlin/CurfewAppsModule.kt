@@ -111,11 +111,6 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun setTargetApps(packages: ReadableArray, promise: Promise) {
         try {
-            if (CurfewScheduleModule.checkCurfewActiveNow(reactContext)) {
-                promise.reject("HARD_LOCKOUT", "Curfew is in progress. Target App selection is locked.")
-                return
-            }
-
             val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val newSet = mutableSetOf<String>()
             for (i in 0 until packages.size()) {

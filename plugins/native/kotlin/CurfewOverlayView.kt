@@ -36,6 +36,7 @@ class CurfewOverlayView(
             }
             background = bg
             setPadding(dp(24f), dp(24f), dp(24f), dp(24f))
+            isClickable = true
         }
 
         val cardParams = LayoutParams(

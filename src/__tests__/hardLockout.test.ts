@@ -31,8 +31,8 @@ describe('Hard Lockout Policy & State (Seam 1)', () => {
   const inactiveCurfew = false;
 
   describe('canModifySettings policy', () => {
-    it('disallows modification when Curfew is active', () => {
-      expect(canModifySettings(activeCurfew)).toBe(false);
+    it('allows modification even when Curfew is active', () => {
+      expect(canModifySettings(activeCurfew)).toBe(true);
     });
 
     it('allows modification when Curfew is inactive', () => {
@@ -41,11 +41,10 @@ describe('Hard Lockout Policy & State (Seam 1)', () => {
   });
 
   describe('evaluateHardLockout', () => {
-    it('presents banner and locks settings when Curfew is active', () => {
+    it('does not lock settings when Curfew is active', () => {
       const state = evaluateHardLockout(true);
-      expect(state.isLocked).toBe(true);
-      expect(state.bannerVisible).toBe(true);
-      expect(state.message).toContain('Curfew is in progress');
+      expect(state.isLocked).toBe(false);
+      expect(state.bannerVisible).toBe(false);
     });
 
     it('hides banner and unlocks settings when Curfew is inactive', () => {
@@ -53,17 +52,10 @@ describe('Hard Lockout Policy & State (Seam 1)', () => {
       expect(state.isLocked).toBe(false);
       expect(state.bannerVisible).toBe(false);
     });
-
-    it('presents banner when an attempt is made during active Curfew', () => {
-      const state = evaluateHardLockout(true, true);
-      expect(state.isLocked).toBe(true);
-      expect(state.bannerVisible).toBe(true);
-      expect(state.message).toEqual(HARD_LOCKOUT_BANNER_TEXT);
-    });
   });
 
-  describe('Hard Lockout Enforcement on Schedule Modifications', () => {
-    it('blocks schedule persistence when Curfew is active', async () => {
+  describe('In-App Schedule Modifications Policy', () => {
+    it('allows schedule persistence when Curfew is active', async () => {
       const mockSetSchedule = jest.fn();
       const mockDriver = {
         getSchedule: jest.fn(),
@@ -87,21 +79,16 @@ describe('Hard Lockout Policy & State (Seam 1)', () => {
         enabled: true,
       };
 
-      const activeResult = await attemptModification(true, testSchedule);
-      expect(activeResult.success).toBe(false);
-      expect(activeResult.bannerPresented).toBe(true);
-      expect(mockSetSchedule).not.toHaveBeenCalled();
-
       mockSetSchedule.mockResolvedValueOnce(true);
-      const inactiveResult = await attemptModification(false, testSchedule);
-      expect(inactiveResult.success).toBe(true);
-      expect(inactiveResult.bannerPresented).toBe(false);
+      const activeResult = await attemptModification(true, testSchedule);
+      expect(activeResult.success).toBe(true);
+      expect(activeResult.bannerPresented).toBe(false);
       expect(mockSetSchedule).toHaveBeenCalledWith(testSchedule);
     });
   });
 
-  describe('Hard Lockout Enforcement on Target App Selection', () => {
-    it('blocks target app selection changes when Curfew is active', async () => {
+  describe('In-App Target App Selection Policy', () => {
+    it('allows target app selection changes when Curfew is active', async () => {
       const mockSetTargetApps = jest.fn();
       const mockDriver = {
         getInstalledApps: jest.fn(),
@@ -117,41 +104,34 @@ describe('Hard Lockout Policy & State (Seam 1)', () => {
         return { success: saved, bannerPresented: false };
       };
 
-      const activeResult = await attemptToggleApp(true, ['com.android.chrome']);
-      expect(activeResult.success).toBe(false);
-      expect(activeResult.bannerPresented).toBe(true);
-      expect(mockSetTargetApps).not.toHaveBeenCalled();
-
       mockSetTargetApps.mockResolvedValueOnce(true);
-      const inactiveResult = await attemptToggleApp(false, ['com.android.chrome']);
-      expect(inactiveResult.success).toBe(true);
-      expect(inactiveResult.bannerPresented).toBe(false);
+      const activeResult = await attemptToggleApp(true, ['com.android.chrome']);
+      expect(activeResult.success).toBe(true);
+      expect(activeResult.bannerPresented).toBe(false);
       expect(mockSetTargetApps).toHaveBeenCalledWith(['com.android.chrome']);
     });
   });
 
-  describe('Native Module Hard Lockout Rejection verification', () => {
+  describe('Native Module In-App Editability verification', () => {
     const fs = require('fs');
     const path = require('path');
 
-    it('CurfewScheduleModule.kt rejects setSchedule when Curfew is active', () => {
+    it('CurfewScheduleModule.kt does not reject setSchedule during active Curfew', () => {
       const scheduleModulePath = path.join(
         __dirname,
         '../../plugins/native/kotlin/CurfewScheduleModule.kt'
       );
       const content = fs.readFileSync(scheduleModulePath, 'utf8');
-      expect(content).toContain('checkCurfewActiveNow(reactContext)');
-      expect(content).toContain('promise.reject("HARD_LOCKOUT"');
+      expect(content).not.toContain('promise.reject("HARD_LOCKOUT"');
     });
 
-    it('CurfewAppsModule.kt rejects setTargetApps when Curfew is active', () => {
+    it('CurfewAppsModule.kt does not reject setTargetApps during active Curfew', () => {
       const appsModulePath = path.join(
         __dirname,
         '../../plugins/native/kotlin/CurfewAppsModule.kt'
       );
       const content = fs.readFileSync(appsModulePath, 'utf8');
-      expect(content).toContain('CurfewScheduleModule.checkCurfewActiveNow(reactContext)');
-      expect(content).toContain('promise.reject("HARD_LOCKOUT"');
+      expect(content).not.toContain('promise.reject("HARD_LOCKOUT"');
     });
   });
 });

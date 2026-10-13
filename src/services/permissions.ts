@@ -12,6 +12,7 @@ export interface PermissionsState extends RawPermissions {
 
 export interface PermissionsDriver {
   checkPermissions(): Promise<PermissionsState>;
+  checkPermissionsSync?(): PermissionsState;
   openAccessibilitySettings(): Promise<void>;
   openOverlaySettings(): Promise<void>;
   openBatteryOptimizationSettings(): Promise<void>;
@@ -31,6 +32,28 @@ export function computePermissionsState(raw: RawPermissions): PermissionsState {
 const { CurfewPermissions } = NativeModules;
 
 export const defaultPermissionsDriver: PermissionsDriver = {
+  checkPermissionsSync(): PermissionsState {
+    if (Platform.OS !== 'android' || !CurfewPermissions?.checkPermissionsSync) {
+      return {
+        accessibility: false,
+        overlay: false,
+        batteryIgnored: false,
+        allGranted: false,
+      };
+    }
+    try {
+      const result = CurfewPermissions.checkPermissionsSync();
+      return computePermissionsState(result);
+    } catch {
+      return {
+        accessibility: false,
+        overlay: false,
+        batteryIgnored: false,
+        allGranted: false,
+      };
+    }
+  },
+
   async checkPermissions(): Promise<PermissionsState> {
     if (Platform.OS !== 'android' || !CurfewPermissions?.checkPermissions) {
       return {

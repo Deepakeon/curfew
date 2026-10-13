@@ -12,8 +12,15 @@ npm install
 npm run typecheck
 npm test
 
-# Generate native Android project via Expo prebuild
-npx expo prebuild --platform android --no-install
+# Run debug build (uses debug.keystore)
+npm run android:debug
+
+# Run release build (uses keystore.properties release key)
+npm run android:release
+
+# Or build APK directly
+npm run build:android:debug
+npm run build:android:release
 ```
 
 ## Release Builds & CI/CD

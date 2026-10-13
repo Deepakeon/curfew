@@ -38,7 +38,6 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
   const renderAppItem = ({ item }: { item: InstalledApp }) => {
     const isTarget = targetSet.has(item.packageName);
     const hasIcon = Boolean(item.icon && item.icon.length > 0);
-
     return (
       <TouchableOpacity
         style={[
