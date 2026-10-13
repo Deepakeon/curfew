@@ -98,10 +98,10 @@ describe('Schedule Tab UI Requirements (Issue #7)', () => {
       expect(intervals[4].formatted).toBe('1:00 AM');
     });
 
-    it('disallows dropdown selection during Hard Lockout', () => {
+    it('allows dropdown selection during Curfew', () => {
       const isCurfewActive = true;
       const isLocked = !canModifySettings(isCurfewActive);
-      expect(isLocked).toBe(true);
+      expect(isLocked).toBe(false);
     });
   });
 

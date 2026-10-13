@@ -148,6 +148,8 @@ android {
       expect(modified).toContain('signingConfigs {');
       expect(modified).toContain('release {');
       expect(modified).toContain('signingConfig signingConfigs.release');
+      expect(modified).toMatch(/buildTypes\s*\{\s*debug\s*\{\s*signingConfig signingConfigs\.debug/);
+      expect(modified).toMatch(/release\s*\{\s*signingConfig signingConfigs\.release/);
       expect(modified).toContain('taskGraph.whenReady');
       expect(modified).toContain('Release signing credentials not configured');
     });

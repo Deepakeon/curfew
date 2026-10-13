@@ -7,20 +7,17 @@ export interface HardLockoutState {
   message: string;
 }
 
-export function canModifySettings(isCurfewActive: boolean): boolean {
-  return !isCurfewActive;
+export function canModifySettings(_isCurfewActive?: boolean): boolean {
+  return true;
 }
 
 export function evaluateHardLockout(
-  isCurfewActive: boolean,
-  attemptedChange: boolean = false
+  _isCurfewActive: boolean,
+  _attemptedChange: boolean = false
 ): HardLockoutState {
-  const isLocked = isCurfewActive;
-  const bannerVisible = isCurfewActive || attemptedChange;
-
   return {
-    isLocked,
-    bannerVisible,
+    isLocked: false,
+    bannerVisible: false,
     message: HARD_LOCKOUT_BANNER_TEXT,
   };
 }
