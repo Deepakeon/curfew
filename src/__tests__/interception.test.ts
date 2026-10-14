@@ -3,10 +3,12 @@ jest.mock('react-native', () => ({
   NativeModules: {},
 }));
 
+import { CurfewSchedule } from '../services/schedule';
 import {
-  isCurfewActive,
-  CurfewSchedule,
-} from '../services/schedule';
+  shouldInterceptPackage,
+  PROTECTED_PACKAGES,
+  CURFEW_PACKAGE,
+} from '../services/interception';
 
 describe('Accessibility Interception & System Overlay Policy', () => {
   const activeSchedule: CurfewSchedule = {
@@ -19,28 +21,6 @@ describe('Accessibility Interception & System Overlay Policy', () => {
   };
 
   const targetPackages = new Set(['com.android.chrome', 'com.google.android.youtube']);
-  const protectedPackages = new Set([
-    'com.curfew',
-    'com.android.settings',
-    'com.android.packageinstaller',
-    'com.google.android.packageinstaller',
-    'com.android.systemui',
-    'android',
-    'com.google.android.apps.nexuslauncher',
-  ]);
-
-  function shouldInterceptPackage(
-    pkg: string,
-    schedule: CurfewSchedule,
-    targets: Set<string>,
-    currentTime: Date
-  ): boolean {
-    if (protectedPackages.has(pkg)) {
-      return false;
-    }
-    const curfewActive = isCurfewActive(schedule, currentTime);
-    return curfewActive && targets.has(pkg);
-  }
 
   it('triggers interception for target apps during active curfew', () => {
     const activeTime = new Date('2026-10-12T23:00:00');
@@ -53,15 +33,21 @@ describe('Accessibility Interception & System Overlay Policy', () => {
     expect(shouldInterceptPackage('com.android.chrome', activeSchedule, targetPackages, inactiveTime)).toBe(false);
   });
 
+  it('automatically intercepts Curfew itself during active curfew', () => {
+    const activeTime = new Date('2026-10-12T23:00:00');
+    expect(shouldInterceptPackage(CURFEW_PACKAGE, activeSchedule, targetPackages, activeTime)).toBe(true);
+  });
+
+  it('does not intercept Curfew itself outside active curfew', () => {
+    const inactiveTime = new Date('2026-10-12T14:00:00');
+    expect(shouldInterceptPackage(CURFEW_PACKAGE, activeSchedule, targetPackages, inactiveTime)).toBe(false);
+  });
+
   it('never intercepts protected packages even during active curfew (Uninstall Escape Hatch)', () => {
     const activeTime = new Date('2026-10-12T23:00:00');
-    expect(shouldInterceptPackage('com.curfew', activeSchedule, targetPackages, activeTime)).toBe(false);
-    expect(shouldInterceptPackage('com.android.settings', activeSchedule, targetPackages, activeTime)).toBe(false);
-    expect(shouldInterceptPackage('com.android.packageinstaller', activeSchedule, targetPackages, activeTime)).toBe(false);
-    expect(shouldInterceptPackage('com.google.android.packageinstaller', activeSchedule, targetPackages, activeTime)).toBe(false);
-    expect(shouldInterceptPackage('com.android.systemui', activeSchedule, targetPackages, activeTime)).toBe(false);
-    expect(shouldInterceptPackage('android', activeSchedule, targetPackages, activeTime)).toBe(false);
-    expect(shouldInterceptPackage('com.google.android.apps.nexuslauncher', activeSchedule, targetPackages, activeTime)).toBe(false);
+    for (const pkg of PROTECTED_PACKAGES) {
+      expect(shouldInterceptPackage(pkg, activeSchedule, targetPackages, activeTime)).toBe(false);
+    }
   });
 
   it('never intercepts non-target launcher apps (e.g. Phone, Camera)', () => {
