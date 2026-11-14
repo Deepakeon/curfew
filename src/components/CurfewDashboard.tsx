@@ -385,7 +385,6 @@ export function CurfewDashboard({ isCurfewActive: propIsActive }: CurfewDashboar
             autoCorrect={false}
             autoCapitalize="none"
             clearButtonMode="while-editing"
-            autoFocus
           />
           {searchQuery.length > 0 ? (
             <TouchableOpacity

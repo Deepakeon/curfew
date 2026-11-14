@@ -31,11 +31,11 @@ class CurfewOverlayView(
             gravity = Gravity.CENTER_HORIZONTAL
             val bg = GradientDrawable().apply {
                 setColor(Color.parseColor("#0d0d0d"))
-                cornerRadius = dp(10f).toFloat()
+                cornerRadius = dp(12f).toFloat()
                 setStroke(dp(1f), Color.parseColor("#242728"))
             }
             background = bg
-            setPadding(dp(24f), dp(24f), dp(24f), dp(24f))
+            setPadding(dp(24f), dp(28f), dp(24f), dp(28f))
             isClickable = true
         }
 
@@ -69,13 +69,13 @@ class CurfewOverlayView(
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.CENTER_HORIZONTAL
-            bottomMargin = dp(16f)
+            bottomMargin = dp(14f)
         }
         card.addView(statusPill, statusParams)
 
-        // 2. Title: Target App Restricted
+        // 2. Title: App Restricted
         val titleView = TextView(context).apply {
-            text = "Target App Restricted"
+            text = "App Restricted"
             setTextColor(Color.parseColor("#f4f4f6"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
             typeface = Typeface.DEFAULT_BOLD
@@ -86,44 +86,27 @@ class CurfewOverlayView(
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.CENTER_HORIZONTAL
-            bottomMargin = dp(8f)
+            bottomMargin = dp(16f)
         }
         card.addView(titleView, titleParams)
 
-        // 3. Subtitle
-        val subtitleView = TextView(context).apply {
-            text = "Access is blocked during your scheduled Curfew Window."
-            setTextColor(Color.parseColor("#9c9c9d"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        // 3. Clean Countdown (Directly on card without nested box)
+        countdownValueView = TextView(context).apply {
+            text = "--:--:--"
+            setTextColor(Color.parseColor("#f4f4f6"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 36f)
+            typeface = Typeface.MONOSPACE
+            letterSpacing = 0.05f
             gravity = Gravity.CENTER
         }
-        val subtitleParams = LinearLayout.LayoutParams(
+        val countdownValueParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.CENTER_HORIZONTAL
-            bottomMargin = dp(20f)
+            bottomMargin = dp(4f)
         }
-        card.addView(subtitleView, subtitleParams)
-
-        // 4. Elevated Countdown Box (#101111)
-        val timeCard = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            val timeBg = GradientDrawable().apply {
-                setColor(Color.parseColor("#101111"))
-                cornerRadius = dp(8f).toFloat()
-                setStroke(dp(1f), Color.parseColor("#242728"))
-            }
-            background = timeBg
-            setPadding(dp(16f), dp(16f), dp(16f), dp(16f))
-        }
-        val timeCardParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply {
-            bottomMargin = dp(24f)
-        }
+        card.addView(countdownValueView, countdownValueParams)
 
         val countdownLabel = TextView(context).apply {
             text = "TIME REMAINING"
@@ -138,28 +121,11 @@ class CurfewOverlayView(
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.CENTER_HORIZONTAL
-            bottomMargin = dp(6f)
+            bottomMargin = dp(24f)
         }
-        timeCard.addView(countdownLabel, countdownLabelParams)
+        card.addView(countdownLabel, countdownLabelParams)
 
-        countdownValueView = TextView(context).apply {
-            text = "--:--:--"
-            setTextColor(Color.parseColor("#f4f4f6"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 32f)
-            typeface = Typeface.MONOSPACE
-            letterSpacing = 0.05f
-            gravity = Gravity.CENTER
-        }
-        val countdownValueParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply {
-            gravity = Gravity.CENTER_HORIZONTAL
-        }
-        timeCard.addView(countdownValueView, countdownValueParams)
-        card.addView(timeCard, timeCardParams)
-
-        // 5. White CTA Pill: Exit to Home
+        // 4. White CTA Pill: Exit to Home
         val exitButton = TextView(context).apply {
             text = "Exit to Home"
             setTextColor(Color.BLACK)
@@ -181,13 +147,13 @@ class CurfewOverlayView(
             LinearLayout.LayoutParams.MATCH_PARENT,
             dp(44f)
         ).apply {
-            bottomMargin = dp(16f)
+            bottomMargin = dp(14f)
         }
         card.addView(exitButton, exitBtnParams)
 
-        // 6. Escape Hatch Footnote
+        // 5. Escape Hatch Footnote
         val escapeHatchNote = TextView(context).apply {
-            text = "Android Settings remains accessible for app removal."
+            text = "Android Settings remains accessible"
             setTextColor(Color.parseColor("#434345"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             gravity = Gravity.CENTER
