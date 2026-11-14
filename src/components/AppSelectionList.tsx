@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { useTargetApps } from '../hooks/useTargetApps';
 import { InstalledApp } from '../services/targetApps';
@@ -25,6 +26,8 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
   const isCurfewActive = propIsActive !== undefined ? propIsActive : scheduleIsActive;
   const isLocked = !canModifySettings(isCurfewActive);
   const [lockoutAttempted, setLockoutAttempted] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'locked'>('all');
+
   const {
     apps,
     allAppsCount,
@@ -35,9 +38,17 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
     loading,
   } = useTargetApps();
 
+  const displayedApps = useMemo(() => {
+    if (filter === 'locked') {
+      return apps.filter((app) => targetSet.has(app.packageName));
+    }
+    return apps;
+  }, [apps, filter, targetSet]);
+
   const renderAppItem = ({ item }: { item: InstalledApp }) => {
     const isTarget = targetSet.has(item.packageName);
     const hasIcon = Boolean(item.icon && item.icon.length > 0);
+
     return (
       <TouchableOpacity
         style={[
@@ -53,6 +64,9 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
           toggleApp(item.packageName);
         }}
         activeOpacity={isLocked ? 1 : 0.7}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: isTarget, disabled: isLocked }}
+        accessibilityLabel={`${item.label}, ${isTarget ? 'curfew locked' : 'unlocked'}`}
       >
         <View style={styles.appLeading}>
           {hasIcon ? (
@@ -80,21 +94,22 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
 
         <View
           style={[
-            styles.toggleBadge,
-            isTarget ? styles.badgeRestricted : styles.badgeAllowed,
-            isLocked && styles.badgeLocked,
+            styles.lockButton,
+            isTarget ? styles.lockButtonTarget : styles.lockButtonAllowed,
+            isLocked && styles.lockButtonDisabled,
           ]}
         >
-          <View
-            style={[
-              styles.toggleDot,
-              isTarget ? styles.dotRestricted : styles.dotAllowed,
-              isLocked && styles.dotLocked,
-            ]}
+          <Ionicons
+            name={isTarget ? 'lock-closed' : 'lock-open-outline'}
+            size={16}
+            color={
+              isLocked
+                ? theme.colors.ash
+                : isTarget
+                ? theme.colors.accentRed
+                : theme.colors.mute
+            }
           />
-          <Text style={[styles.toggleText, isLocked && styles.toggleTextLocked]}>
-            {isTarget ? (isLocked ? 'Restricted (Locked)' : 'Restricted') : (isLocked ? 'Allowed (Locked)' : 'Allowed')}
-          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -109,26 +124,28 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
         />
       )}
 
+      {/* Header with Title & Locked Count Badge */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Target Apps</Text>
-          <Text style={styles.subtitle}>
-            {isLocked
-              ? 'Target App selection is locked during active Curfew.'
-              : 'Select installed applications to restrict during Curfew Windows.'}
-          </Text>
-        </View>
-        <View style={styles.counterBadge}>
-          <Text style={styles.counterText}>
-            {targetSet.size} of {allAppsCount} Selected
+        <Text style={styles.title}>Target Apps</Text>
+        <View style={styles.headerBadge}>
+          <Ionicons name="lock-closed" size={11} color={theme.colors.accentRed} />
+          <Text style={styles.headerBadgeText}>
+            {targetSet.size} Locked
           </Text>
         </View>
       </View>
 
-      <View style={styles.searchContainer}>
+      {/* Search Input Bar */}
+      <View style={styles.searchBar}>
+        <Ionicons
+          name="search-outline"
+          size={16}
+          color={theme.colors.mute}
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search apps by name or package..."
+          placeholder={filter === 'locked' ? 'Search locked apps...' : 'Search apps...'}
           placeholderTextColor={theme.colors.mute}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -141,33 +158,103 @@ export function AppSelectionList({ isCurfewActive: propIsActive }: AppSelectionL
             style={styles.clearButton}
             onPress={() => setSearchQuery('')}
             activeOpacity={0.7}
+            accessibilityLabel="Clear search"
           >
-            <Text style={styles.clearButtonText}>Clear</Text>
+            <Ionicons name="close-circle" size={16} color={theme.colors.mute} />
           </TouchableOpacity>
         ) : null}
       </View>
 
+      {/* List Filter Options: All vs Locked */}
+      <View style={styles.filterRow}>
+        <View style={styles.segmentedFilter}>
+          <TouchableOpacity
+            style={[
+              styles.filterOption,
+              filter === 'all' && styles.filterOptionActive,
+            ]}
+            onPress={() => setFilter('all')}
+            activeOpacity={0.75}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: filter === 'all' }}
+            accessibilityLabel={`All apps, ${allAppsCount} total`}
+          >
+            <Text
+              style={[
+                styles.filterOptionText,
+                filter === 'all' && styles.filterOptionTextActive,
+              ]}
+            >
+              All ({allAppsCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterOption,
+              filter === 'locked' && styles.filterOptionActiveLocked,
+            ]}
+            onPress={() => setFilter('locked')}
+            activeOpacity={0.75}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: filter === 'locked' }}
+            accessibilityLabel={`Locked apps, ${targetSet.size} locked`}
+          >
+            <Ionicons
+              name="lock-closed"
+              size={12}
+              color={
+                filter === 'locked' ? theme.colors.accentRed : theme.colors.mute
+              }
+            />
+            <Text
+              style={[
+                styles.filterOptionText,
+                filter === 'locked' && styles.filterOptionTextActiveLocked,
+              ]}
+            >
+              Locked ({targetSet.size})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* App List */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Scanning installed apps...</Text>
+          <Text style={styles.loadingText}>Scanning apps...</Text>
         </View>
       ) : (
         <FlatList
-          data={apps}
+          data={displayedApps}
           keyExtractor={(item) => item.packageName}
           renderItem={renderAppItem}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           initialNumToRender={15}
           maxToRenderPerBatch={20}
           windowSize={10}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
+              <Ionicons
+                name={filter === 'locked' ? 'lock-closed-outline' : 'search-outline'}
+                size={28}
+                color={theme.colors.ash}
+                style={styles.emptyIcon}
+              />
               <Text style={styles.emptyText}>
                 {searchQuery.length > 0
-                  ? 'No matching apps found.'
-                  : 'No installed launcher apps detected.'}
+                  ? `No apps matching "${searchQuery}"`
+                  : filter === 'locked'
+                  ? 'No apps locked yet'
+                  : 'No launcher apps found'}
               </Text>
+              {filter === 'locked' && searchQuery.length === 0 ? (
+                <Text style={styles.emptySubtext}>
+                  Tap the lock icon on any app to restrict it during Curfew.
+                </Text>
+              ) : null}
             </View>
           }
         />
@@ -184,32 +271,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.lg,
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
   },
   title: {
     ...theme.typography.headingLg,
     color: theme.colors.ink,
+    fontWeight: '600',
   },
-  subtitle: {
-    ...theme.typography.captionMd,
-    color: theme.colors.mute,
-    marginTop: theme.spacing.xxs,
-  },
-  counterBadge: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.hairline,
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: theme.colors.accentRedSoft,
+    borderColor: theme.colors.accentRed,
     borderWidth: 1,
     borderRadius: theme.rounded.full,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
   },
-  counterText: {
+  headerBadgeText: {
     ...theme.typography.captionSm,
-    color: theme.colors.ink,
-    fontWeight: '500',
+    color: theme.colors.accentRed,
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 0.3,
   },
-  searchContainer: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surfaceElevated,
@@ -217,21 +305,64 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: theme.rounded.md,
     paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    height: 42,
+    marginBottom: theme.spacing.sm,
+  },
+  searchIcon: {
+    marginRight: theme.spacing.sm,
   },
   searchInput: {
     flex: 1,
     ...theme.typography.bodyMd,
     color: theme.colors.ink,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 0,
   },
   clearButton: {
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
+    padding: theme.spacing.xs,
   },
-  clearButtonText: {
+  filterRow: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.md,
+  },
+  segmentedFilter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceElevated,
+    borderColor: theme.colors.hairline,
+    borderWidth: 1,
+    borderRadius: theme.rounded.full,
+    padding: 3,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: theme.rounded.full,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterOptionActive: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderColor: theme.colors.hairlineStrong,
+  },
+  filterOptionActiveLocked: {
+    backgroundColor: theme.colors.accentRedSoft,
+    borderColor: theme.colors.accentRed,
+  },
+  filterOptionText: {
     ...theme.typography.captionSm,
     color: theme.colors.mute,
+    fontWeight: '500',
+  },
+  filterOptionTextActive: {
+    color: theme.colors.ink,
+    fontWeight: '600',
+  },
+  filterOptionTextActiveLocked: {
+    color: theme.colors.accentRed,
+    fontWeight: '700',
   },
   listContent: {
     paddingBottom: theme.spacing.xxl,
@@ -250,6 +381,9 @@ const styles = StyleSheet.create({
   appItemTarget: {
     borderColor: theme.colors.hairlineStrong,
   },
+  appItemLocked: {
+    opacity: 0.7,
+  },
   appLeading: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -257,14 +391,14 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
   },
   appIcon: {
-    width: 48,
-    height: 48,
+    width: 42,
+    height: 42,
     borderRadius: theme.rounded.md,
     backgroundColor: theme.colors.surfaceElevated,
   },
   appIconFallback: {
-    width: 48,
-    height: 48,
+    width: 42,
+    height: 42,
     borderRadius: theme.rounded.md,
     backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
@@ -282,48 +416,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appLabel: {
-    ...theme.typography.bodyMd,
+    ...theme.typography.buttonMd,
     color: theme.colors.ink,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   appPackage: {
     ...theme.typography.captionSm,
-    color: theme.colors.mute,
-    marginTop: theme.spacing.xxs,
+    color: theme.colors.ash,
+    marginTop: 1,
   },
-  toggleBadge: {
-    flexDirection: 'row',
+  lockButton: {
+    width: 38,
+    height: 38,
+    borderRadius: theme.rounded.md,
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.rounded.full,
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.hairline,
+  },
+  lockButtonTarget: {
+    backgroundColor: theme.colors.accentRedSoft,
+    borderColor: theme.colors.accentRed,
+  },
+  lockButtonAllowed: {
     backgroundColor: theme.colors.surfaceElevated,
-  },
-  badgeRestricted: {
-    borderColor: theme.colors.hairlineStrong,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  badgeAllowed: {
     borderColor: theme.colors.hairline,
   },
-  toggleDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: theme.spacing.xs,
-  },
-  dotRestricted: {
-    backgroundColor: theme.colors.ink,
-  },
-  dotAllowed: {
-    backgroundColor: theme.colors.ash,
-  },
-  toggleText: {
-    ...theme.typography.captionSm,
-    color: theme.colors.ink,
-    fontWeight: '500',
+  lockButtonDisabled: {
+    opacity: 0.5,
   },
   loadingContainer: {
     paddingVertical: theme.spacing.xxl,
@@ -331,28 +450,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    ...theme.typography.captionMd,
+    ...theme.typography.captionSm,
     color: theme.colors.mute,
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   emptyContainer: {
     paddingVertical: theme.spacing.xxl,
     alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyIcon: {
+    marginBottom: theme.spacing.sm,
   },
   emptyText: {
     ...theme.typography.bodySm,
+    color: theme.colors.ink,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    ...theme.typography.captionSm,
     color: theme.colors.mute,
-  },
-  appItemLocked: {
-    opacity: 0.75,
-  },
-  badgeLocked: {
-    borderColor: theme.colors.hairline,
-  },
-  dotLocked: {
-    backgroundColor: theme.colors.ash,
-  },
-  toggleTextLocked: {
-    color: theme.colors.mute,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

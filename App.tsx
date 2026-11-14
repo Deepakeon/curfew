@@ -1,10 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from './src/theme';
 import { OnboardingWizard } from './src/components/OnboardingWizard';
-import { AppSelectionList } from './src/components/AppSelectionList';
-import { ScheduleEditor } from './src/components/ScheduleEditor';
+import { CurfewDashboard } from './src/components/CurfewDashboard';
 import { usePermissions } from './src/hooks/usePermissions';
 import { useCurfewSchedule } from './src/hooks/useCurfewSchedule';
 
@@ -38,6 +38,8 @@ export default function App({ initialTab }: AppProps = {}) {
     setSelectedTab('schedule');
   };
 
+  const isSetupActive = activeTab === 'setup';
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -46,63 +48,54 @@ export default function App({ initialTab }: AppProps = {}) {
         <View style={styles.header}>
           <View style={styles.headerBrand}>
             <Text style={styles.title}>Curfew</Text>
-            <View style={styles.headerStatusBadge}>
+            {isCurfewRunning ? (
               <View
-                style={[
-                  styles.headerStatusDot,
-                  isCurfewRunning ? styles.dotActive : styles.dotStandby,
-                ]}
-              />
-              <Text style={styles.headerStatusText}>
-                {isCurfewRunning ? 'Active' : 'Standby'}
-              </Text>
-            </View>
+                style={styles.headerStatusBadgeActive}
+                accessibilityLabel="Curfew lockout is actively running"
+              >
+                <View style={[styles.headerStatusDot, styles.dotActive]} />
+                <Text style={styles.headerStatusTextActive}>LOCKED</Text>
+              </View>
+            ) : null}
           </View>
 
-          <View style={styles.tabBar}>
+          <View style={styles.tabBar} accessibilityRole="tablist">
             <TouchableOpacity
               style={[
                 styles.tabPill,
-                activeTab === 'schedule' && styles.tabPillActive,
+                !isSetupActive && styles.tabPillActive,
               ]}
               onPress={() => handleTabPress('schedule')}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: !isSetupActive }}
+              accessibilityLabel="Curfew controls"
             >
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={13}
+                color={!isSetupActive ? theme.colors.ink : theme.colors.mute}
+              />
               <Text
                 style={[
                   styles.tabText,
-                  activeTab === 'schedule' && styles.tabTextActive,
+                  !isSetupActive && styles.tabTextActive,
                 ]}
               >
-                Schedule
+                Curfew
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.tabPill,
-                activeTab === 'apps' && styles.tabPillActive,
-              ]}
-              onPress={() => handleTabPress('apps')}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === 'apps' && styles.tabTextActive,
-                ]}
-              >
-                Apps
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tabPill,
-                activeTab === 'setup' && styles.tabPillActive,
+                isSetupActive && styles.tabPillActive,
               ]}
               onPress={() => handleTabPress('setup')}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isSetupActive }}
+              accessibilityLabel={`Setup tab, ${permissions.allGranted ? 'all permissions ready' : 'setup required'}`}
             >
               <View
                 style={[
@@ -113,7 +106,7 @@ export default function App({ initialTab }: AppProps = {}) {
               <Text
                 style={[
                   styles.tabText,
-                  activeTab === 'setup' && styles.tabTextActive,
+                  isSetupActive && styles.tabTextActive,
                 ]}
               >
                 Setup
@@ -122,17 +115,13 @@ export default function App({ initialTab }: AppProps = {}) {
           </View>
         </View>
 
-        {activeTab === 'schedule' && (
-          <ScheduleEditor isCurfewActive={isCurfewRunning} />
-        )}
-        {activeTab === 'apps' && (
-          <AppSelectionList isCurfewActive={isCurfewRunning} />
-        )}
-        {activeTab === 'setup' && (
+        {isSetupActive ? (
           <OnboardingWizard
             permissions={permissions}
             onAllGranted={handleAllGranted}
           />
+        ) : (
+          <CurfewDashboard isCurfewActive={isCurfewRunning} />
         )}
       </View>
     </SafeAreaView>
@@ -155,7 +144,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   headerBrand: {
     flexDirection: 'row',
@@ -165,16 +154,17 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.headingXl,
     color: theme.colors.ink,
+    letterSpacing: -0.5,
   },
-  headerStatusBadge: {
+  headerStatusBadgeActive: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.hairline,
+    backgroundColor: theme.colors.accentRedSoft,
+    borderColor: theme.colors.accentRed,
     borderWidth: 1,
     borderRadius: theme.rounded.full,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs,
+    paddingVertical: 2,
   },
   headerStatusDot: {
     width: 6,
@@ -183,35 +173,37 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   dotActive: {
-    backgroundColor: theme.colors.accentGreen,
+    backgroundColor: theme.colors.accentRed,
   },
-  dotStandby: {
-    backgroundColor: theme.colors.ash,
-  },
-  headerStatusText: {
+  headerStatusTextActive: {
     ...theme.typography.captionSm,
-    color: theme.colors.ink,
-    fontWeight: '500',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: theme.colors.accentRed,
+    fontWeight: '700',
   },
   tabBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.colors.surfaceElevated,
     borderColor: theme.colors.hairline,
     borderWidth: 1,
     borderRadius: theme.rounded.full,
-    padding: theme.spacing.xxs,
+    padding: 3,
   },
   tabPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: 13,
+    paddingVertical: 5,
     borderRadius: theme.rounded.full,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    gap: 5,
   },
   tabPillActive: {
     backgroundColor: theme.colors.surfaceCard,
     borderColor: theme.colors.hairlineStrong,
-    borderWidth: 1,
   },
   tabText: {
     ...theme.typography.captionSm,
@@ -220,12 +212,12 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: theme.colors.ink,
+    fontWeight: '600',
   },
   setupDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 5,
   },
   dotReady: {
     backgroundColor: theme.colors.accentGreen,

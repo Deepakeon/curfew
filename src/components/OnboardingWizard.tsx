@@ -44,9 +44,7 @@ export function OnboardingWizard({
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>
-              {isFullyArmed ? 'Curfew Armed' : 'Setup Curfew'}
-            </Text>
+            
             <Text style={styles.headerSubtitle}>
               {isFullyArmed
                 ? 'All systems active. Offline locks ready.'
