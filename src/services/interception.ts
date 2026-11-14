@@ -12,6 +12,17 @@ export const PROTECTED_PACKAGES: readonly string[] = [
 export const CURFEW_PACKAGE = 'com.curfew';
 
 /**
+ * Determines whether Usage Access app-detection polling should execute.
+ * Rule: Polling runs ONLY when screen is visible and curfew is actively on.
+ */
+export function shouldPollUsageStats(state: {
+  isScreenVisible: boolean;
+  isCurfewActive: boolean;
+}): boolean {
+  return state.isScreenVisible && state.isCurfewActive;
+}
+
+/**
  * Determines whether an application package should be intercepted by Curfew.
  *
  * Rules:

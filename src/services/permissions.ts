@@ -1,18 +1,24 @@
 import { NativeModules, Platform } from 'react-native';
 
 export interface RawPermissions {
-  accessibility: boolean;
+  usageAccess?: boolean;
+  accessibility?: boolean;
   overlay: boolean;
   batteryIgnored: boolean;
 }
 
-export interface PermissionsState extends RawPermissions {
+export interface PermissionsState {
+  usageAccess?: boolean;
+  accessibility?: boolean;
+  overlay: boolean;
+  batteryIgnored: boolean;
   allGranted: boolean;
 }
 
 export interface PermissionsDriver {
   checkPermissions(): Promise<PermissionsState>;
   checkPermissionsSync?(): PermissionsState;
+  openUsageAccessSettings(): Promise<void>;
   openAccessibilitySettings(): Promise<void>;
   openOverlaySettings(): Promise<void>;
   openBatteryOptimizationSettings(): Promise<void>;
@@ -20,11 +26,15 @@ export interface PermissionsDriver {
 }
 
 export function computePermissionsState(raw: RawPermissions): PermissionsState {
-  const allGranted = Boolean(raw.accessibility && raw.overlay && raw.batteryIgnored);
+  const usageAccess = Boolean(raw.usageAccess ?? raw.accessibility);
+  const overlay = Boolean(raw.overlay);
+  const batteryIgnored = Boolean(raw.batteryIgnored);
+  const allGranted = Boolean(usageAccess && overlay && batteryIgnored);
   return {
-    accessibility: Boolean(raw.accessibility),
-    overlay: Boolean(raw.overlay),
-    batteryIgnored: Boolean(raw.batteryIgnored),
+    usageAccess,
+    accessibility: usageAccess,
+    overlay,
+    batteryIgnored,
     allGranted,
   };
 }
@@ -35,6 +45,7 @@ export const defaultPermissionsDriver: PermissionsDriver = {
   checkPermissionsSync(): PermissionsState {
     if (Platform.OS !== 'android' || !CurfewPermissions?.checkPermissionsSync) {
       return {
+        usageAccess: false,
         accessibility: false,
         overlay: false,
         batteryIgnored: false,
@@ -46,6 +57,7 @@ export const defaultPermissionsDriver: PermissionsDriver = {
       return computePermissionsState(result);
     } catch {
       return {
+        usageAccess: false,
         accessibility: false,
         overlay: false,
         batteryIgnored: false,
@@ -57,6 +69,7 @@ export const defaultPermissionsDriver: PermissionsDriver = {
   async checkPermissions(): Promise<PermissionsState> {
     if (Platform.OS !== 'android' || !CurfewPermissions?.checkPermissions) {
       return {
+        usageAccess: false,
         accessibility: false,
         overlay: false,
         batteryIgnored: false,
@@ -67,10 +80,16 @@ export const defaultPermissionsDriver: PermissionsDriver = {
     return computePermissionsState(result);
   },
 
-  async openAccessibilitySettings(): Promise<void> {
-    if (CurfewPermissions?.openAccessibilitySettings) {
+  async openUsageAccessSettings(): Promise<void> {
+    if (CurfewPermissions?.openUsageAccessSettings) {
+      await CurfewPermissions.openUsageAccessSettings();
+    } else if (CurfewPermissions?.openAccessibilitySettings) {
       await CurfewPermissions.openAccessibilitySettings();
     }
+  },
+
+  async openAccessibilitySettings(): Promise<void> {
+    return this.openUsageAccessSettings();
   },
 
   async openOverlaySettings(): Promise<void> {

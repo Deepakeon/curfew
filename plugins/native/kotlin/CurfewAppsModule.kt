@@ -118,6 +118,9 @@ class CurfewAppsModule(private val reactContext: ReactApplicationContext) :
             }
             // Use commit() to guarantee atomic synchronous write to disk
             val success = prefs.edit().putStringSet(KEY_TARGET_PACKAGES, newSet).commit()
+            if (success) {
+                CurfewForegroundService.evaluateState(reactContext)
+            }
             promise.resolve(success)
         } catch (e: Exception) {
             promise.reject("SET_TARGET_APPS_ERROR", e.message, e)

@@ -1,13 +1,12 @@
 package com.curfew
 
-import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import android.view.accessibility.AccessibilityManager
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -22,13 +21,18 @@ class CurfewPermissionsModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun checkPermissionsSync(): WritableMap {
-        val accessibilityGranted = isAccessibilityServiceEnabled()
+        try {
+            CurfewForegroundService.start(reactContext)
+        } catch (_: Exception) {}
+
+        val usageAccessGranted = isUsageAccessGranted()
         val overlayGranted = isOverlayPermissionGranted()
         val batteryIgnored = isBatteryOptimizationIgnored()
-        val allGranted = accessibilityGranted && overlayGranted && batteryIgnored
+        val allGranted = usageAccessGranted && overlayGranted && batteryIgnored
 
         return Arguments.createMap().apply {
-            putBoolean("accessibility", accessibilityGranted)
+            putBoolean("usageAccess", usageAccessGranted)
+            putBoolean("accessibility", usageAccessGranted)
             putBoolean("overlay", overlayGranted)
             putBoolean("batteryIgnored", batteryIgnored)
             putBoolean("allGranted", allGranted)
@@ -46,9 +50,26 @@ class CurfewPermissionsModule(private val reactContext: ReactApplicationContext)
     }
 
     @ReactMethod
+    fun openUsageAccessSettings(promise: Promise) {
+        try {
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                Intent(
+                    Settings.ACTION_USAGE_ACCESS_SETTINGS,
+                    Uri.parse("package:${reactContext.packageName}")
+                )
+            } else {
+                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            }
+            startActivityIntent(intent, promise)
+        } catch (_: Exception) {
+            val fallbackIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            startActivityIntent(fallbackIntent, promise)
+        }
+    }
+
+    @ReactMethod
     fun openAccessibilitySettings(promise: Promise) {
-        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        startActivityIntent(intent, promise)
+        openUsageAccessSettings(promise)
     }
 
     @ReactMethod
@@ -101,56 +122,27 @@ class CurfewPermissionsModule(private val reactContext: ReactApplicationContext)
         }
     }
 
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        try {
-            val accessibilityManager = reactContext.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
-            val enabledServicesList = accessibilityManager?.getEnabledAccessibilityServiceList(
-                AccessibilityServiceInfo.FEEDBACK_ALL_MASK
-            )
-            if (enabledServicesList != null) {
-                for (service in enabledServicesList) {
-                    val serviceInfo = service.resolveInfo?.serviceInfo
-                    if (serviceInfo != null &&
-                        serviceInfo.packageName.equals(reactContext.packageName, ignoreCase = true) &&
-                        (serviceInfo.name.endsWith("CurfewAccessibilityService") ||
-                         serviceInfo.name.equals(".CurfewAccessibilityService", ignoreCase = true))
-                    ) {
-                        return true
-                    }
-                }
+    private fun isUsageAccessGranted(): Boolean {
+        return try {
+            val appOps = reactContext.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(
+                    AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    reactContext.packageName
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                appOps.checkOpNoThrow(
+                    AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    reactContext.packageName
+                )
             }
-
-            val accessibilityEnabled = Settings.Secure.getInt(
-                reactContext.contentResolver,
-                Settings.Secure.ACCESSIBILITY_ENABLED,
-                0
-            )
-            if (accessibilityEnabled != 1) {
-                return false
-            }
-
-            val expectedServiceName = "${reactContext.packageName}/.CurfewAccessibilityService"
-            val expectedFullServiceName = "${reactContext.packageName}/${reactContext.packageName}.CurfewAccessibilityService"
-            val enabledServices = Settings.Secure.getString(
-                reactContext.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-            ) ?: return false
-
-            val enabledServiceComponents = enabledServices.split(":")
-            for (component in enabledServiceComponents) {
-                val trimmed = component.trim()
-                if (trimmed.equals(expectedServiceName, ignoreCase = true) ||
-                    trimmed.equals(expectedFullServiceName, ignoreCase = true) ||
-                    (trimmed.startsWith("${reactContext.packageName}/", ignoreCase = true) &&
-                     trimmed.endsWith("CurfewAccessibilityService", ignoreCase = true))
-                ) {
-                    return true
-                }
-            }
+            mode == AppOpsManager.MODE_ALLOWED
         } catch (_: Exception) {
-            return false
+            false
         }
-        return false
     }
 
     private fun isOverlayPermissionGranted(): Boolean {

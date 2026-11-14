@@ -18,6 +18,7 @@ export function OnboardingWizard({
 }: OnboardingWizardProps) {
   const {
     permissions: hookPermissions,
+    openUsageAccess,
     openAccessibility,
     openOverlay,
     openBatteryOptimization,
@@ -28,7 +29,7 @@ export function OnboardingWizard({
   const [modalVisible, setModalVisible] = useState(false);
 
   const grantedCount = [
-    Boolean(permissions.accessibility),
+    Boolean(permissions.usageAccess ?? permissions.accessibility),
     Boolean(permissions.overlay),
     Boolean(permissions.batteryIgnored),
   ].filter(Boolean).length;
@@ -70,10 +71,10 @@ export function OnboardingWizard({
         <PermissionCard
           icon="scan-outline"
           title="App Detection"
-          subtitle="Accessibility"
+          subtitle="Usage Access"
           description="Catches target apps when launched"
-          granted={permissions.accessibility}
-          onGrant={openAccessibility}
+          granted={Boolean(permissions.usageAccess ?? permissions.accessibility)}
+          onGrant={openUsageAccess ?? openAccessibility}
           onHelpPress={() => setModalVisible(true)}
         />
 
@@ -97,7 +98,7 @@ export function OnboardingWizard({
         />
       </View>
 
-      {!permissions.accessibility && (
+      {!(permissions.usageAccess ?? permissions.accessibility) && (
         <TouchableOpacity
           style={styles.helpLink}
           onPress={() => setModalVisible(true)}

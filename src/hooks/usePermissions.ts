@@ -16,6 +16,7 @@ export function usePermissions(driver: PermissionsDriver = defaultPermissionsDri
       // Fallback to default state
     }
     return {
+      usageAccess: false,
       accessibility: false,
       overlay: false,
       batteryIgnored: false,
@@ -63,6 +64,7 @@ export function usePermissions(driver: PermissionsDriver = defaultPermissionsDri
     permissions,
     loading,
     refresh,
+    openUsageAccess: () => driver.openUsageAccessSettings(),
     openAccessibility: () => driver.openAccessibilitySettings(),
     openOverlay: () => driver.openOverlaySettings(),
     openBatteryOptimization: () => driver.openBatteryOptimizationSettings(),
