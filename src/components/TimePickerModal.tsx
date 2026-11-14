@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
-import { generate15MinuteIntervals, TimeInterval } from '../services/schedule';
+import { generate15MinuteIntervals, TimeInterval, formatTime } from '../services/schedule';
 
 interface TimePickerModalProps {
   visible: boolean;
@@ -33,16 +33,20 @@ export function TimePickerModal({
   const intervals = useMemo(() => generate15MinuteIntervals(), []);
   const flatListRef = useRef<FlatList<TimeInterval>>(null);
 
-  // Approximate slot index
+  // Exact slot index (0 to 95)
   const selectedIndex = useMemo(() => {
     const slotMinuteIndex = Math.floor(selectedMinute / 15);
     const index = selectedHour * 4 + slotMinuteIndex;
     return Math.max(0, Math.min(index, intervals.length - 1));
   }, [selectedHour, selectedMinute, intervals.length]);
 
+  const formattedSelected = useMemo(
+    () => formatTime(selectedHour, selectedMinute),
+    [selectedHour, selectedMinute]
+  );
+
   useEffect(() => {
-    if (visible && flatListRef.current) {
-      // Auto-scroll to selected time slot after modal mounts
+    if (visible) {
       const timer = setTimeout(() => {
         try {
           flatListRef.current?.scrollToIndex({
@@ -51,9 +55,12 @@ export function TimePickerModal({
             viewPosition: 0.3,
           });
         } catch {
-          // In case items not yet measured
+          flatListRef.current?.scrollToOffset({
+            offset: Math.max(0, selectedIndex * ITEM_HEIGHT - 60),
+            animated: false,
+          });
         }
-      }, 50);
+      }, 30);
       return () => clearTimeout(timer);
     }
   }, [visible, selectedIndex]);
@@ -67,8 +74,15 @@ export function TimePickerModal({
     >
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
+          {/* Header */}
           <View style={styles.headerRow}>
-            <Text style={styles.title}>{title}</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.title}>{title}</Text>
+              <View style={styles.selectedBadge}>
+                <Text style={styles.selectedBadgeText}>{formattedSelected}</Text>
+              </View>
+            </View>
+
             <TouchableOpacity
               onPress={onClose}
               style={styles.closeIconButton}
@@ -79,12 +93,21 @@ export function TimePickerModal({
               <Ionicons name="close" size={20} color={theme.colors.mute} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.subtitle}>Choose a 15-minute time increment</Text>
 
+          <Text style={styles.subtitle}>Select a 15-minute interval</Text>
+
+          {/* Time Slots List */}
           <FlatList
             ref={flatListRef}
             data={intervals}
             keyExtractor={(item) => `${item.hour}:${item.minute}`}
+            initialScrollIndex={selectedIndex}
+            onScrollToIndexFailed={(info) => {
+              flatListRef.current?.scrollToOffset({
+                offset: Math.max(0, info.index * ITEM_HEIGHT - 60),
+                animated: false,
+              });
+            }}
             getItemLayout={(_, index) => ({
               length: ITEM_HEIGHT,
               offset: ITEM_HEIGHT * index,
@@ -92,10 +115,11 @@ export function TimePickerModal({
             })}
             style={styles.list}
             contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
               const isSelected =
                 item.hour === selectedHour &&
-                Math.abs(item.minute - selectedMinute) < 8; // Closest 15m bucket
+                Math.abs(item.minute - selectedMinute) < 8;
 
               return (
                 <TouchableOpacity
@@ -122,7 +146,7 @@ export function TimePickerModal({
                   </Text>
                   {isSelected ? (
                     <Ionicons
-                      name="checkmark"
+                      name="checkmark-circle"
                       size={18}
                       color={theme.colors.accentGreen}
                     />
@@ -132,6 +156,7 @@ export function TimePickerModal({
             }}
           />
 
+          {/* Footer Cancel */}
           <View style={styles.footerRow}>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -160,8 +185,8 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 380,
-    maxHeight: '75%',
-    backgroundColor: theme.colors.surfaceElevated,
+    maxHeight: '78%',
+    backgroundColor: theme.colors.surfaceCard,
     borderColor: theme.colors.hairlineStrong,
     borderWidth: 1,
     borderRadius: theme.rounded.xl,
@@ -171,26 +196,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xxs,
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flex: 1,
   },
   title: {
     ...theme.typography.headingMd,
     color: theme.colors.ink,
+    fontWeight: '600',
+  },
+  selectedBadge: {
+    backgroundColor: theme.colors.surfaceElevated,
+    borderColor: theme.colors.hairline,
+    borderWidth: 1,
+    borderRadius: theme.rounded.xs,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  selectedBadgeText: {
+    ...theme.typography.captionSm,
+    fontSize: 11,
+    color: theme.colors.accentGreen,
+    fontWeight: '600',
   },
   closeIconButton: {
     padding: theme.spacing.xs,
   },
   subtitle: {
-    ...theme.typography.captionMd,
+    ...theme.typography.captionSm,
     color: theme.colors.mute,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   list: {
     maxHeight: 320,
     marginVertical: theme.spacing.xs,
   },
   listContent: {
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: theme.spacing.xxs,
   },
   slotItem: {
     height: ITEM_HEIGHT,
@@ -205,7 +251,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   slotItemSelected: {
-    backgroundColor: theme.colors.surfaceCard,
+    backgroundColor: theme.colors.surfaceElevated,
     borderColor: theme.colors.accentGreen,
     borderWidth: 1,
   },
@@ -220,10 +266,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footerRow: {
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.hairline,
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
   },
   cancelButton: {
     paddingVertical: theme.spacing.sm,
@@ -231,10 +277,11 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.hairline,
     borderWidth: 1,
     alignItems: 'center',
-    backgroundColor: theme.colors.surfaceCard,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   cancelButtonText: {
     ...theme.typography.buttonMd,
+    fontSize: 13,
     color: theme.colors.mute,
   },
 });

@@ -1,144 +1,182 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 
-interface PermissionCardProps {
+export interface PermissionCardProps {
   title: string;
   description: string;
+  subtitle?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
   granted: boolean;
   onGrant: () => void;
   onHelpPress?: () => void;
+  isLast?: boolean;
 }
 
 export function PermissionCard({
   title,
   description,
+  subtitle,
+  icon,
   granted,
   onGrant,
   onHelpPress,
+  isLast = false,
 }: PermissionCardProps) {
   return (
-    <View style={[styles.card, granted && styles.cardGranted]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.badge}>
-          <View style={[styles.dot, granted ? styles.dotGranted : styles.dotMissing]} />
-          <Text style={styles.badgeText}>
-            {granted ? 'Active' : 'Missing'}
+    <View style={[styles.container, !isLast && styles.withDivider]}>
+      <View style={styles.row}>
+        {icon ? (
+          <View style={[styles.iconTile, granted && styles.iconTileGranted]}>
+            <Ionicons
+              name={icon}
+              size={18}
+              color={granted ? theme.colors.accentGreen : theme.colors.ink}
+            />
+          </View>
+        ) : null}
+
+        <View style={styles.info}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{title}</Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          </View>
+          <Text style={styles.description} numberOfLines={1}>
+            {description}
           </Text>
         </View>
-      </View>
 
-      <Text style={styles.description}>{description}</Text>
+        <View style={styles.actionArea}>
+          {onHelpPress && !granted ? (
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={onHelpPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Help for ${title}`}
+            >
+              <Ionicons
+                name="help-circle-outline"
+                size={18}
+                color={theme.colors.mute}
+              />
+            </TouchableOpacity>
+          ) : null}
 
-      <View style={styles.actionRow}>
-        {!granted ? (
-          <TouchableOpacity style={styles.grantButton} onPress={onGrant} activeOpacity={0.8}>
-            <Text style={styles.grantButtonText}>Grant Permission</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.readyIndicator}>
-            <Text style={styles.readyText}>Configured</Text>
-          </View>
-        )}
-
-        {onHelpPress && !granted ? (
-          <TouchableOpacity style={styles.helpButton} onPress={onHelpPress} activeOpacity={0.7}>
-            <Text style={styles.helpButtonText}>Android 13/14 Help</Text>
-          </TouchableOpacity>
-        ) : null}
+          {granted ? (
+            <View style={styles.grantedBadge}>
+              <Ionicons
+                name="checkmark-circle"
+                size={15}
+                color={theme.colors.accentGreen}
+              />
+              <Text style={styles.grantedText}>Active</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.grantButton}
+              onPress={onGrant}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Enable ${title}`}
+            >
+              <Text style={styles.grantButtonText}>Enable</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.surfaceCard,
-    borderColor: theme.colors.hairline,
-    borderWidth: 1,
-    borderRadius: theme.rounded.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
+  container: {
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
   },
-  cardGranted: {
-    borderColor: theme.colors.hairlineStrong,
+  withDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.hairlineSoft,
   },
-  header: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+  },
+  iconTile: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.rounded.md,
+    backgroundColor: theme.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+  },
+  iconTileGranted: {
+    backgroundColor: theme.colors.accentGreenSoft,
+  },
+  info: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginBottom: 2,
   },
   title: {
-    ...theme.typography.headingMd,
+    ...theme.typography.buttonMd,
     color: theme.colors.ink,
-    flex: 1,
+    fontWeight: '600',
   },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.rounded.full,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  dotGranted: {
-    backgroundColor: theme.colors.accentGreen,
-  },
-  dotMissing: {
-    backgroundColor: theme.colors.accentYellow,
-  },
-  badgeText: {
+  subtitle: {
     ...theme.typography.captionSm,
-    color: theme.colors.ink,
-    fontWeight: '500',
+    color: theme.colors.mute,
   },
   description: {
-    ...theme.typography.bodySm,
+    ...theme.typography.captionSm,
     color: theme.colors.body,
-    marginBottom: theme.spacing.md,
   },
-  actionRow: {
+  actionArea: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   grantButton: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
     borderRadius: theme.rounded.md,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   grantButtonText: {
     ...theme.typography.buttonMd,
+    fontSize: 13,
+    fontWeight: '600',
     color: theme.colors.onPrimary,
   },
+  grantedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.rounded.full,
+    backgroundColor: theme.colors.accentGreenSoft,
+  },
+  grantedText: {
+    ...theme.typography.captionSm,
+    fontWeight: '600',
+    color: theme.colors.accentGreen,
+  },
   helpButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    width: 32,
+    height: 32,
     borderRadius: theme.rounded.md,
-    borderColor: theme.colors.hairline,
-    borderWidth: 1,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  helpButtonText: {
-    ...theme.typography.buttonMd,
-    color: theme.colors.ink,
-  },
-  readyIndicator: {
-    paddingVertical: theme.spacing.xs,
-  },
-  readyText: {
-    ...theme.typography.captionMd,
-    color: theme.colors.mute,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

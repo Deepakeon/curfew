@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { usePermissions } from '../hooks/usePermissions';
 import { PermissionCard } from './PermissionCard';
@@ -26,45 +27,99 @@ export function OnboardingWizard({
   const permissions = customPermissions ?? hookPermissions;
   const [modalVisible, setModalVisible] = useState(false);
 
+  const grantedCount = [
+    Boolean(permissions.accessibility),
+    Boolean(permissions.overlay),
+    Boolean(permissions.batteryIgnored),
+  ].filter(Boolean).length;
+  const totalCount = 3;
+  const isFullyArmed = Boolean(permissions.allGranted) || grantedCount === totalCount;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.statusBanner}>
-        <View style={styles.bannerHeader}>
-          <View style={[styles.statusDot, permissions.allGranted ? styles.dotReady : styles.dotPending]} />
-          <Text style={styles.bannerTitle}>
-            {permissions.allGranted ? 'Curfew Engine Armed' : 'Setup Required'}
-          </Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            
+            <Text style={styles.headerSubtitle}>
+              {isFullyArmed
+                ? 'All systems active. Offline locks ready.'
+                : `${grantedCount} of ${totalCount} permissions enabled`}
+            </Text>
+          </View>
+
+          <View style={styles.progressPills}>
+            {[0, 1, 2].map((idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.progressPill,
+                  idx < grantedCount && styles.progressPillActive,
+                ]}
+              />
+            ))}
+          </View>
         </View>
-        <Text style={styles.bannerSubtitle}>
-          {permissions.allGranted
-            ? 'All required system permissions are active. Curfew can enforce schedules reliably.'
-            : 'Grant permissions below to enable offline app detection, overlay blocking, and process survival.'}
-        </Text>
       </View>
 
-      <Text style={styles.sectionHeader}>System Permissions</Text>
+      <View style={styles.groupedCard}>
+        <PermissionCard
+          icon="scan-outline"
+          title="App Detection"
+          subtitle="Accessibility"
+          description="Catches target apps when launched"
+          granted={permissions.accessibility}
+          onGrant={openAccessibility}
+          onHelpPress={() => setModalVisible(true)}
+        />
 
-      <PermissionCard
-        title="Accessibility Service"
-        description="Detects when Target Apps launch in foreground to intercept them offline."
-        granted={permissions.accessibility}
-        onGrant={openAccessibility}
-        onHelpPress={() => setModalVisible(true)}
-      />
+        <PermissionCard
+          icon="layers-outline"
+          title="Lockout Screen"
+          subtitle="Overlay"
+          description="Draws blocking timer over apps"
+          granted={permissions.overlay}
+          onGrant={openOverlay}
+        />
 
-      <PermissionCard
-        title="Display Over Other Apps"
-        description="Draws the native Curfew countdown overlay window when a Target App is opened."
-        granted={permissions.overlay}
-        onGrant={openOverlay}
-      />
+        <PermissionCard
+          icon="flash-outline"
+          title="Keep Alive"
+          subtitle="Battery Saver"
+          description="Runs reliably throughout the night"
+          granted={permissions.batteryIgnored}
+          onGrant={openBatteryOptimization}
+          isLast
+        />
+      </View>
 
-      <PermissionCard
-        title="Ignore Battery Optimizations"
-        description="Prevents aggressive OEM background cleaners from terminating Curfew services overnight."
-        granted={permissions.batteryIgnored}
-        onGrant={openBatteryOptimization}
-      />
+      {!permissions.accessibility && (
+        <TouchableOpacity
+          style={styles.helpLink}
+          onPress={() => setModalVisible(true)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open Android 13 and 14 Restricted Settings Guide"
+        >
+          <Ionicons
+            name="help-circle-outline"
+            size={15}
+            color={theme.colors.mute}
+          />
+          <Text style={styles.helpLinkText}>
+            Toggle greyed out? Android 13/14 Unblock Guide
+          </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={13}
+            color={theme.colors.ash}
+          />
+        </TouchableOpacity>
+      )}
 
       <RestrictedSettingsModal
         visible={modalVisible}
@@ -72,17 +127,33 @@ export function OnboardingWizard({
         onOpenAppInfo={openAppInfo}
       />
 
-      {permissions.allGranted && onAllGranted ? (
+      {isFullyArmed && onAllGranted ? (
         <TouchableOpacity
           style={styles.continueButton}
           onPress={onAllGranted}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Continue to Schedule"
         >
           <Text style={styles.continueButtonText}>Continue to Schedule</Text>
+          <Ionicons
+            name="arrow-forward"
+            size={16}
+            color={theme.colors.onPrimary}
+          />
         </TouchableOpacity>
-      ) : null}
+      ) : (
+        <View style={styles.footerNote}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={13}
+            color={theme.colors.ash}
+          />
+          <Text style={styles.footerNoteText}>
+            100% offline • No telemetry • Device-local
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -95,56 +166,92 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: theme.spacing.xxl,
   },
-  statusBanner: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.hairlineStrong,
-    borderWidth: 1,
-    borderRadius: theme.rounded.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+  header: {
+    marginBottom: theme.spacing.lg,
+    paddingTop: theme.spacing.xs,
   },
-  bannerHeader: {
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+    justifyContent: 'space-between',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: theme.spacing.sm,
+  headerLeft: {
+    flex: 1,
   },
-  dotReady: {
-    backgroundColor: theme.colors.accentGreen,
-  },
-  dotPending: {
-    backgroundColor: theme.colors.accentYellow,
-  },
-  bannerTitle: {
+  headerTitle: {
     ...theme.typography.headingMd,
     color: theme.colors.ink,
+    fontWeight: '600',
   },
-  bannerSubtitle: {
+  headerSubtitle: {
     ...theme.typography.bodySm,
-    color: theme.colors.body,
-  },
-  sectionHeader: {
-    ...theme.typography.captionMd,
     color: theme.colors.mute,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    marginTop: 2,
+  },
+  progressPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressPill: {
+    width: 18,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.surfaceElevated,
+  },
+  progressPillActive: {
+    backgroundColor: theme.colors.accentGreen,
+  },
+  groupedCard: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    borderRadius: theme.rounded.lg,
+    overflow: 'hidden',
     marginBottom: theme.spacing.md,
   },
-  continueButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.rounded.md,
+  helpLink: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: theme.spacing.md,
+    gap: 6,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.rounded.md,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.hairlineSoft,
+    marginBottom: theme.spacing.md,
+  },
+  helpLinkText: {
+    ...theme.typography.captionSm,
+    color: theme.colors.mute,
+  },
+  continueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    height: 44,
+    borderRadius: theme.rounded.md,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
   },
   continueButtonText: {
     ...theme.typography.buttonMd,
+    fontWeight: '600',
     color: theme.colors.onPrimary,
+  },
+  footerNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: theme.spacing.md,
+    marginTop: theme.spacing.xs,
+  },
+  footerNoteText: {
+    ...theme.typography.captionSm,
+    color: theme.colors.ash,
   },
 });
