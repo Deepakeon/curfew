@@ -102,5 +102,34 @@ describe('Boot Persistence & Foreground Keep-Alive Policy (Seam 3)', () => {
       expect(content).toContain('enableVibration(false)');
       expect(content).toContain('FOREGROUND_SERVICE_TYPE_SPECIAL_USE');
     });
+
+    it('CurfewForegroundService.kt polls usage stats only when screen is visible and curfew is active', () => {
+      const servicePath = path.join(
+        __dirname,
+        '../../plugins/native/kotlin/CurfewForegroundService.kt'
+      );
+      const content = fs.readFileSync(servicePath, 'utf8');
+
+      // Screen visibility broadcast receiver
+      expect(content).toContain('Intent.ACTION_SCREEN_ON');
+      expect(content).toContain('Intent.ACTION_SCREEN_OFF');
+      expect(content).toContain('Intent.ACTION_USER_PRESENT');
+
+      // UsageStatsManager & Activity Resumed detection
+      expect(content).toContain('UsageStatsManager');
+      expect(content).toContain('UsageEvents.Event.ACTIVITY_RESUMED');
+
+      // Curfew schedule active gating
+      expect(content).toContain('CurfewScheduleModule.checkCurfewActiveNow');
+      expect(content).toContain('startPolling');
+      expect(content).toContain('stopPolling');
+
+      // Application overlay
+      expect(content).toContain('TYPE_APPLICATION_OVERLAY');
+
+      // Uninstall escape hatch (protected packages)
+      expect(content).toContain('PROTECTED_PACKAGES');
+      expect(content).toContain('com.android.settings');
+    });
   });
 });

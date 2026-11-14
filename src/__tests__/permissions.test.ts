@@ -3,6 +3,7 @@ jest.mock('react-native', () => ({
   NativeModules: {
     CurfewPermissions: {
       checkPermissions: jest.fn(),
+      openUsageAccessSettings: jest.fn(),
       openAccessibilitySettings: jest.fn(),
       openOverlaySettings: jest.fn(),
       openBatteryOptimizationSettings: jest.fn(),
@@ -15,30 +16,45 @@ import { computePermissionsState, PermissionsDriver, defaultPermissionsDriver } 
 import { NativeModules } from 'react-native';
 
 describe('Permissions Service & Logic', () => {
-  it('computes allGranted as true only when all three permissions are granted', () => {
+  it('computes allGranted as true only when all three permissions are granted (usageAccess)', () => {
+    const allTrue = computePermissionsState({
+      usageAccess: true,
+      overlay: true,
+      batteryIgnored: true,
+    });
+    expect(allTrue.allGranted).toBe(true);
+    expect(allTrue.usageAccess).toBe(true);
+    expect(allTrue.accessibility).toBe(true);
+    expect(allTrue.overlay).toBe(true);
+    expect(allTrue.batteryIgnored).toBe(true);
+  });
+
+  it('computes allGranted as true when legacy accessibility field is provided', () => {
     const allTrue = computePermissionsState({
       accessibility: true,
       overlay: true,
       batteryIgnored: true,
     });
     expect(allTrue.allGranted).toBe(true);
+    expect(allTrue.usageAccess).toBe(true);
     expect(allTrue.accessibility).toBe(true);
     expect(allTrue.overlay).toBe(true);
     expect(allTrue.batteryIgnored).toBe(true);
   });
 
-  it('computes allGranted as false if accessibility is missing', () => {
+  it('computes allGranted as false if usageAccess is missing', () => {
     const state = computePermissionsState({
-      accessibility: false,
+      usageAccess: false,
       overlay: true,
       batteryIgnored: true,
     });
     expect(state.allGranted).toBe(false);
+    expect(state.usageAccess).toBe(false);
   });
 
   it('computes allGranted as false if overlay is missing', () => {
     const state = computePermissionsState({
-      accessibility: true,
+      usageAccess: true,
       overlay: false,
       batteryIgnored: true,
     });
@@ -47,7 +63,7 @@ describe('Permissions Service & Logic', () => {
 
   it('computes allGranted as false if battery exemption is missing', () => {
     const state = computePermissionsState({
-      accessibility: true,
+      usageAccess: true,
       overlay: true,
       batteryIgnored: false,
     });
@@ -56,30 +72,36 @@ describe('Permissions Service & Logic', () => {
 
   it('calls native driver checkPermissions and formats result', async () => {
     (NativeModules.CurfewPermissions.checkPermissions as jest.Mock).mockResolvedValueOnce({
-      accessibility: true,
+      usageAccess: true,
       overlay: false,
       batteryIgnored: true,
     });
 
     const result = await defaultPermissionsDriver.checkPermissions();
     expect(result.allGranted).toBe(false);
+    expect(result.usageAccess).toBe(true);
     expect(result.accessibility).toBe(true);
     expect(result.overlay).toBe(false);
   });
 
-  it('delegates open actions to driver', async () => {
+  it('delegates open actions to driver including openUsageAccessSettings', async () => {
     const mockDriver: PermissionsDriver = {
       checkPermissions: jest.fn().mockResolvedValue({
+        usageAccess: true,
         accessibility: true,
         overlay: true,
         batteryIgnored: true,
         allGranted: true,
       }),
+      openUsageAccessSettings: jest.fn().mockResolvedValue(undefined),
       openAccessibilitySettings: jest.fn().mockResolvedValue(undefined),
       openOverlaySettings: jest.fn().mockResolvedValue(undefined),
       openBatteryOptimizationSettings: jest.fn().mockResolvedValue(undefined),
       openAppInfoSettings: jest.fn().mockResolvedValue(undefined),
     };
+
+    await mockDriver.openUsageAccessSettings();
+    expect(mockDriver.openUsageAccessSettings).toHaveBeenCalledTimes(1);
 
     await mockDriver.openAccessibilitySettings();
     expect(mockDriver.openAccessibilitySettings).toHaveBeenCalledTimes(1);

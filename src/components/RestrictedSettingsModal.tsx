@@ -12,7 +12,7 @@ const RESTRICTED_STEPS = [
   {
     number: 1,
     title: 'Trigger Security Prompt',
-    text: 'Attempt to toggle Curfew ON in Accessibility Settings. Android will show a "Restricted setting" prompt.',
+    text: 'Attempt to toggle Curfew ON in Usage Access Settings. Android will show a "Restricted setting" prompt.',
   },
   {
     number: 2,
@@ -26,8 +26,8 @@ const RESTRICTED_STEPS = [
   },
   {
     number: 4,
-    title: 'Enable Accessibility',
-    text: 'Return to Accessibility Settings. The toggle switch will now be unlocked and ready to turn ON.',
+    title: 'Enable Usage Access',
+    text: 'Return to Usage Access Settings. The toggle switch will now be unlocked and ready to turn ON.',
   },
 ];
 
@@ -47,7 +47,7 @@ export function RestrictedSettingsModal({
         <View style={styles.modalCard}>
           <Text style={styles.title}>Android 13/14 Restricted Settings</Text>
           <Text style={styles.subtitle}>
-            Android disables Accessibility by default on sideloaded APKs. Follow these sequential steps:
+            Android disables special permissions by default on sideloaded APKs. Follow these sequential steps:
           </Text>
 
           <View style={styles.stepContainer}>

@@ -163,8 +163,11 @@ class CurfewScheduleModule(private val reactContext: ReactApplicationContext) :
                 editor.putStringSet(KEY_ACTIVE_DAYS, daysSet)
             }
 
-            // Commit synchronously to guarantee immediate availability for AccessibilityService
+            // Commit synchronously to guarantee immediate availability for ForegroundService evaluation
             val success = editor.commit()
+            if (success) {
+                CurfewForegroundService.evaluateState(reactContext)
+            }
             promise.resolve(success)
         } catch (e: Exception) {
             promise.reject("SET_SCHEDULE_ERROR", e.message, e)

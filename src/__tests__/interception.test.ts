@@ -6,11 +6,18 @@ jest.mock('react-native', () => ({
 import { CurfewSchedule } from '../services/schedule';
 import {
   shouldInterceptPackage,
+  shouldPollUsageStats,
   PROTECTED_PACKAGES,
   CURFEW_PACKAGE,
 } from '../services/interception';
 
-describe('Accessibility Interception & System Overlay Policy', () => {
+describe('Usage Access Interception & Polling Policy', () => {
+  it('determines polling should run ONLY when screen is visible and curfew is on', () => {
+    expect(shouldPollUsageStats({ isScreenVisible: true, isCurfewActive: true })).toBe(true);
+    expect(shouldPollUsageStats({ isScreenVisible: false, isCurfewActive: true })).toBe(false);
+    expect(shouldPollUsageStats({ isScreenVisible: true, isCurfewActive: false })).toBe(false);
+    expect(shouldPollUsageStats({ isScreenVisible: false, isCurfewActive: false })).toBe(false);
+  });
   const activeSchedule: CurfewSchedule = {
     startHour: 22,
     startMinute: 0,

@@ -31,9 +31,10 @@ describe('withCurfew Expo Config Plugin', () => {
     expect(permissions).toContain('android.permission.FOREGROUND_SERVICE');
     expect(permissions).toContain('android.permission.FOREGROUND_SERVICE_SPECIAL_USE');
     expect(permissions).toContain('android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS');
+    expect(permissions).toContain('android.permission.PACKAGE_USAGE_STATS');
   });
 
-  it('declares CurfewAccessibilityService, CurfewForegroundService, and BootReceiver in application', () => {
+  it('declares CurfewForegroundService and BootReceiver in application (omitting AccessibilityService)', () => {
     const mockManifest = createMockManifest();
     const updated = modifyAndroidManifest(mockManifest);
     const app = updated.manifest.application![0];
@@ -41,7 +42,7 @@ describe('withCurfew Expo Config Plugin', () => {
     const serviceNames = (app.service || []).map(
       (serviceNode: any) => serviceNode.$['android:name']
     );
-    expect(serviceNames).toContain('.CurfewAccessibilityService');
+    expect(serviceNames).not.toContain('.CurfewAccessibilityService');
     expect(serviceNames).toContain('.CurfewForegroundService');
 
     const foregroundService = (app.service || []).find(

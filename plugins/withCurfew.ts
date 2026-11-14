@@ -15,6 +15,7 @@ const REQUIRED_PERMISSIONS = [
   'android.permission.FOREGROUND_SERVICE',
   'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
   'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+  'android.permission.PACKAGE_USAGE_STATS',
 ];
 
 export function modifyAndroidManifest(
@@ -45,38 +46,11 @@ export function modifyAndroidManifest(
     if (!app.service) {
       app.service = [];
     }
-    const hasAccessibilityService = app.service.some(
+    // Remove legacy AccessibilityService if present to ensure banking apps are not blocked
+    app.service = app.service.filter(
       (serviceNode: any) =>
-        serviceNode.$['android:name'] === '.CurfewAccessibilityService'
+        serviceNode.$?.['android:name'] !== '.CurfewAccessibilityService'
     );
-    if (!hasAccessibilityService) {
-      app.service.push({
-        $: {
-          'android:name': '.CurfewAccessibilityService',
-          'android:permission': 'android.permission.BIND_ACCESSIBILITY_SERVICE',
-          'android:exported': 'true',
-        },
-        'intent-filter': [
-          {
-            action: [
-              {
-                $: {
-                  'android:name': 'android.accessibilityservice.AccessibilityService',
-                },
-              },
-            ],
-          },
-        ],
-        'meta-data': [
-          {
-            $: {
-              'android:name': 'android.accessibilityservice',
-              'android:resource': '@xml/accessibility_service_config',
-            },
-          },
-        ],
-      } as any);
-    }
 
     const hasForegroundService = app.service.some(
       (serviceNode: any) =>
