@@ -257,12 +257,85 @@ gradle.taskGraph.whenReady { taskGraph ->
 }
 `;
 
+  const splitsBlock = `
+    splits {
+        abi {
+            reset()
+            def enableSplits = (findProperty('enableSplits') ?: 'true').toBoolean()
+            enable enableSplits
+            universalApk (findProperty('universalApk') ? findProperty('universalApk').toBoolean() : true)
+            def targetAbis = (findProperty('targetAbis') ?: findProperty('reactNativeArchitectures') ?: "armeabi-v7a,arm64-v8a,x86,x86_64").split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+            if (!targetAbis.isEmpty()) {
+                include(*targetAbis)
+            }
+        }
+    }
+`;
+
+  const applicationVariantsBlock = `
+    applicationVariants.all { variant ->
+        def baseVersionCode = variant.versionCode
+        def rawVersionName = variant.versionName ?: "1.0.0"
+        def cleanVersionName = rawVersionName.replaceFirst(/^[vV]/, '')
+        def abiVersionCodes = [
+            'universal': 0,
+            'armeabi-v7a': 1,
+            'x86': 2,
+            'arm64-v8a': 3,
+            'x86_64': 4
+        ]
+
+        variant.outputs.each { output ->
+            def filter = output.getFilter(com.android.build.OutputFile.ABI)
+            def abi = filter != null ? filter : 'universal'
+            def offset = abiVersionCodes.get(abi) ?: 0
+            def calculatedVersionCode = baseVersionCode * 10 + offset
+
+            def setViaProperty = false
+            if (output.hasProperty("versionCode") && output.versionCode != null) {
+                try {
+                    output.versionCode.set(calculatedVersionCode)
+                    setViaProperty = true
+                } catch (Exception ignored) {}
+            }
+            if (!setViaProperty) {
+                output.versionCodeOverride = calculatedVersionCode
+            }
+
+            if (variant.buildType.name == 'release') {
+                output.outputFileName = "curfew_V\${cleanVersionName}_\${abi}.apk"
+            }
+        }
+    }
+`;
+
   let result = content;
+
+  // Dynamic versioning in defaultConfig
+  result = result.replace(
+    /versionCode\s+(\d+)/,
+    "versionCode (findProperty('versionCode') ? findProperty('versionCode').toInteger() : $1)"
+  );
+  result = result.replace(
+    /versionName\s+(["'][^"']+["'])/,
+    "versionName (findProperty('versionName') ?: $1)"
+  );
 
   // Insert helper block before android {
   const androidIdx = result.indexOf('android {');
   if (androidIdx !== -1) {
     result = result.slice(0, androidIdx) + helperBlock + '\n' + result.slice(androidIdx);
+  }
+
+  // Insert splitsBlock before signingConfigs { (or before buildTypes {)
+  const signingConfigsIdx = result.indexOf('signingConfigs {');
+  if (signingConfigsIdx !== -1) {
+    result = result.slice(0, signingConfigsIdx) + splitsBlock + '\n    ' + result.slice(signingConfigsIdx);
+  } else {
+    const buildTypesIdx = result.indexOf('buildTypes {');
+    if (buildTypesIdx !== -1) {
+      result = result.slice(0, buildTypesIdx) + splitsBlock + '\n    ' + result.slice(buildTypesIdx);
+    }
   }
 
   // Insert release signingConfig inside signingConfigs {
@@ -295,6 +368,30 @@ gradle.taskGraph.whenReady { taskGraph ->
             nextSigningDebug + 'signingConfig signingConfigs.debug'.length
           );
       }
+    }
+  }
+
+  // Insert applicationVariants block before the closing brace of android {
+  const newAndroidIdx = result.indexOf('android {');
+  if (newAndroidIdx !== -1) {
+    const openBraceIdx = result.indexOf('{', newAndroidIdx);
+    let depth = 0;
+    let closingBraceIdx = -1;
+    for (let i = openBraceIdx; i < result.length; i++) {
+      if (result[i] === '{') depth++;
+      else if (result[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          closingBraceIdx = i;
+          break;
+        }
+      }
+    }
+    if (closingBraceIdx !== -1) {
+      result =
+        result.slice(0, closingBraceIdx) +
+        applicationVariantsBlock +
+        result.slice(closingBraceIdx);
     }
   }
 

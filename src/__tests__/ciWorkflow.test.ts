@@ -37,14 +37,30 @@ describe('CI/CD Release Workflow Configuration', () => {
 
     // Build execution & Gradle release assemble
     expect(content).toContain('./gradlew assembleRelease');
+    expect(content).toContain('-PversionName');
+    expect(content).toContain('-PversionCode');
 
     // Guaranteed cleanup
     expect(content).toContain('always()');
     expect(content).toContain('rm -f');
 
-    // Artifact upload
+    // Artifact upload of split APKs
     expect(content).toContain('actions/upload-artifact@v4');
-    expect(content).toContain('app-release.apk');
+    expect(content).toContain('curfew_V*.apk');
+
+    // GitHub Release creation
+    expect(content).toContain('release_title');
+    expect(content).toContain('release_notes');
+    expect(content).toContain('softprops/action-gh-release');
+  });
+
+  it('workflow defines inputs for dynamic versioning and GitHub release', () => {
+    const content = fs.readFileSync(workflowPath, 'utf8');
+
+    expect(content).toContain('version_name:');
+    expect(content).toContain('version_code:');
+    expect(content).toContain('release_title:');
+    expect(content).toContain('release_notes:');
   });
 
   it('README.md includes documentation for required CI secrets and release workflow', () => {
