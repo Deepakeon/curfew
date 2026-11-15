@@ -119,9 +119,16 @@ describe('withCurfew Expo Config Plugin', () => {
     expect(updated).toContain('add(CurfewPackage())');
   });
 
-  describe('modifyAppBuildGradle release signing configuration', () => {
+  describe('modifyAppBuildGradle release signing, versioning, and ABI splits configuration', () => {
     const mockBuildGradle = `
 android {
+    defaultConfig {
+        applicationId 'com.curfew'
+        minSdkVersion 24
+        targetSdkVersion 36
+        versionCode 1
+        versionName "1.0.0"
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -153,6 +160,34 @@ android {
       expect(modified).toMatch(/release\s*\{\s*signingConfig signingConfigs\.release/);
       expect(modified).toContain('taskGraph.whenReady');
       expect(modified).toContain('Release signing credentials not configured');
+    });
+
+    it('injects dynamic versioning via Gradle properties with fallback', () => {
+      const modified = modifyAppBuildGradle(mockBuildGradle);
+
+      expect(modified).toContain("versionCode (findProperty('versionCode') ? findProperty('versionCode').toInteger() : 1)");
+      expect(modified).toContain("versionName (findProperty('versionName') ?: \"1.0.0\")");
+    });
+
+    it('injects ABI splits configuration for arm64-v8a, armeabi-v7a, x86, x86_64, and universal', () => {
+      const modified = modifyAppBuildGradle(mockBuildGradle);
+
+      expect(modified).toContain('splits {');
+      expect(modified).toContain('abi {');
+      expect(modified).toContain('universalApk');
+      expect(modified).toContain('armeabi-v7a');
+      expect(modified).toContain('arm64-v8a');
+      expect(modified).toContain('x86');
+      expect(modified).toContain('x86_64');
+    });
+
+    it('injects distinct per-ABI version codes and output APK naming', () => {
+      const modified = modifyAppBuildGradle(mockBuildGradle);
+
+      expect(modified).toContain('applicationVariants.all');
+      expect(modified).toContain('abiVersionCodes');
+      expect(modified).toContain('outputFileName');
+      expect(modified).toContain('curfew_V${cleanVersionName}_${abi}.apk');
     });
 
     it('is idempotent when executed repeatedly', () => {

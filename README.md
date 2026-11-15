@@ -151,6 +151,16 @@ npm run build:android:debug
 
 # Build Release APK directly (requires valid keystore.properties)
 npm run build:android:release
+
+# Build universal and all ABI split Release APKs (arm64-v8a, armeabi-v7a, x86_64, x86, universal)
+npm run build:android:release:all
+
+# Build specific ABI Release APK locally
+npm run build:android:release:arm64
+npm run build:android:release:arm32
+npm run build:android:release:x86_64
+npm run build:android:release:x86
+npm run build:android:release:universal
 ```
 
 ---
@@ -184,15 +194,23 @@ base64 -i ~/.android/keys/curfew-release.jks
 
 The release workflow is defined in [`.github/workflows/build-release-apk.yml`](.github/workflows/build-release-apk.yml) and is triggered manually:
 
-- **Manual dispatch (`workflow_dispatch`)**: Trigger from the GitHub Actions tab with an optional target branch, tag, or SHA. Push triggers are omitted to prevent unintended automated release builds.
+- **Manual dispatch (`workflow_dispatch`)**: Trigger from the GitHub Actions tab with configurable inputs:
+  - `target_ref`: Optional branch, tag, or commit SHA to build.
+  - `version_name`: Version name override (e.g. `1.1.0`), passed via Gradle property `-PversionName`.
+  - `version_code`: Version code override (e.g. `2`), passed via Gradle property `-PversionCode`.
+  - `release_title`: When provided, automatically creates a GitHub Release and attaches all APKs.
+  - `release_notes`: Markdown release notes and changelog attached to the GitHub Release.
 
-### Artifacts
+### Artifacts & GitHub Releases
 
 Upon successful build completion:
 - The runner securely decodes the keystore into runner temporary storage.
-- Builds the signed APK using Gradle `assembleRelease`.
+- Builds signed split APKs using Gradle `assembleRelease`.
+- Generated APKs are automatically named with the version and architecture:
+  `curfew_V<versionName>_<abi>.apk` (e.g., `curfew_V1.0.0_arm64-v8a.apk`, `curfew_V1.0.0_universal.apk`).
 - Keystore files are automatically wiped on completion (`if: always()`).
-- The signed APK is uploaded and available for download as the `app-release` workflow artifact.
+- All signed APKs are uploaded and available for download as the `curfew-apks` workflow artifact.
+- If `release_title` is provided, a GitHub Release is published with release notes and all split APKs attached as release assets.
 
 ---
 
