@@ -23,7 +23,7 @@ Get the latest production-ready APK directly from [GitHub Releases](https://gith
 
 | Schedule Setup | App Selection | Lockout Overlay |
 | :---: | :---: | :---: |
-| <img src="assets/screenshots/schedule.png" width="250" alt="Schedule Setup" /> | <img src="assets/screenshots/select-apps.png" width="250" alt="App Selection" /> | <img src="assets/screenshots/overlay.png" width="250" alt="Lockout Overlay" /> |
+| <img src="./assets/screenshots/schedule.png" width="250" alt="Schedule Setup" /> | <img src="./assets/screenshots/select-apps.png" width="250" alt="App Selection" /> | <img src="./assets/screenshots/overlay.png" width="250" alt="Lockout Overlay" /> |
 
 ---
 
